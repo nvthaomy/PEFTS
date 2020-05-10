@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=4
+#PBS -l walltime=700:00:00
+#PBS -V
+#PBS -N __jobName__
+#PBS -M my@ucsb.edu
+#PBS -m ae
+
+
+cd $PBS_O_WORKDIR
+module load intel/18
+export PATH="/home/mnguyen/anaconda3/envs/py2/bin/:$PATH"
+export PYTHONPATH=/home/mnguyen/bin/scripts/:$PYTHONPATH
+
+python ../pmatch_CL_molality.py __m__ __C1__ __P__ __includeideal__ __template__ __ntsteps__ __numBlocks__
+

@@ -1,0 +1,175 @@
+#1) Nref = 1, Rg0 = 1nm = Rg
+#2) bref = Rg sqrt(6/Nref) = 1nm sqrt(6/1) = sqrt(6)nm
+#3) b = b_realUnit_fromSrel / bref
+
+#lengths are in terms of Rg0 (except KuhnLen is in terms of bref)
+ 
+InputFileVersion = 3
+
+models { # triblock in mixture. PE, PSS, hexane, propanol
+  NumModels = 1
+  ModelType = MOLECULAR
+  #ModelType = POLYMERAF
+
+  monomers {
+    NSpecies = 5 #A- B+ Na+ Cl- HOH
+    KuhnLen  = __b1__ __b2__ __b3__ __b4__ __b5__ # b* = bSrel*0.31nm/bref
+    GaussSmearWidth = __a1__ __a2__ __a3__ __a4__ __a5__
+    Charge = -1.0 1.0 1.0 -1.0 0.0 
+    Dipole = 0.
+    Polarizability  = 0.   
+  }
+
+  chains {
+    NChains        = 2 # number of types of polymer
+    polymerReferenceN = 1
+    chain1{
+      Label        = PAA
+#      Length       = 2 #=6*Rg0^2/b^2 = 6*1nm^2/(1.2131*0.31nm)^2= 42.4
+      nBlocks      = 1
+      NBeads       = __PAADOP__
+      Nperblock    = __PAADOP__
+      Architecture = linear
+      Statistics   = FJC
+      BlockSpecies = 1
+#      species = 1
+    }
+    chain2{
+      Label        = PAH
+      nBlocks      = 1
+      NBeads       = __PAHDOP__
+      Nperblock    = __PAHDOP__
+      Architecture = linear
+      Statistics   = FJC
+      BlockSpecies = 2    
+    }
+  }
+
+  smallmolecules {
+#      PolymerReferenceN   = 1  
+      nSmallMoleculeTypes = 3
+
+      smallmolecule1 {
+        Species = 3
+      }
+      smallmolecule2 {
+        Species = 4
+      }
+      smallmolecule3 {
+        Species = 5
+      }
+  }
+
+ model1 {
+    cell {
+      Dim         = 3
+      CellScaling =  20
+      CellLengths =  0.3 0.3 0.3
+      CellAngles  = 90 90 90
+      NPW         = 20 20 20 
+    }
+
+
+    interactions {
+      BExclVolume11 = __B11__
+      BExclVolume12 = __B12__
+      BExclVolume13 = __B13__
+      BExclVolume14 = __B14__
+      BExclVolume15 = __B15__
+      BExclVolume22 = __B22__
+      BExclVolume23 = __B23__
+      BExclVolume24 = __B24__
+      BExclVolume25 = __B25__
+      BExclVolume33 = __B33__
+      BExclVolume34 = __B34__
+      BExclVolume35 = __B35__
+      BExclVolume44 = __B44__
+      BExclVolume45 = __B45__
+      BExclVolume55 = __B55__
+      EElecStatic   = __E__ #8.998777997 # 4pi IFF background epsilon=1
+      EApplied      = 0. 0. 0.
+      ApplyCompressibilityConstraint = False
+      #compressibility_invzetaN = 0.001 # Near incompressible
+    }
+
+    composition {
+       Ensemble = canonical
+       ChainVolFrac = __x1__ __x2__
+       SmallMoleculeVolFrac = __x3__ __x4__ __x5__
+       CChainDensity =  __C__ # (4728 opc + 15 PAA * 42(DOP))/(0.3*19.9869)^3
+    }
+
+    operators {
+      CalcHamiltonian       = true
+      CalcStressTensor      = false
+      CalcPressure          = true
+      CalcChemicalPotential = true
+      CalcStructureFactor   = false
+      CalcDensityOperator   = true
+      IncludeIdealGasTerms  = __idealterm__  
+
+      CalcOrientationCorrelator = false
+      OrientationCorr_SpatialAverageRange = 0.25
+    }
+
+    initfields {
+      #ReadInputFields = HFields
+      #InputFieldsFile = fields0.bin
+
+      initfield1{
+        inittype = urng
+        #inittype = smalam
+        #InitParameters = 0.0001 1
+      }
+      initfield2{
+        inittype = urng
+        #inittype = smalam
+        #InitParameters = 0.0001 -1
+      }
+    }
+  }
+}
+
+
+simulation {
+  jobtype = CL
+  FieldUpdater = PO
+
+  TimeStepDT = 0.1
+  lambdaForceScale = 0.1 1.0
+  lambdaStressScale = 0.01
+
+  #jobtype = SCFT 
+  #FieldUpdater = SIS
+  #TimeStepDT = 1.0
+  #lambdaForceScale = 0.5 1.0
+
+  NumTimeStepsPerBlock = 500
+  #NumBlocks = 36000
+  NumBlocks = __NumBlocks__
+
+  RandomSeed = 0
+
+  SCFTForceStoppingTol = 1e-5
+  SCFTStressStoppingTol = 1e-4
+
+  VariableCell = false
+
+  IO {
+    KeepDensityHistory   = false
+    KeepFieldHistory     = false
+    DensityOutputByChain = false
+    OutputFormattedFields = false
+
+    OutputFields         = HFields
+    FieldOutputSpace     = rspace  # rspace, kspace or both
+  }
+}
+
+parallel {
+  CUDA_selectdevice = 0
+  CUDA_threadblocksize = 64
+
+  OpenMP_nthreads = 6
+}
+

@@ -1,0 +1,146 @@
+#1) Nref = 1, Rg0 = 1nm 
+#2) bref = Rg sqrt(6/Nref) = 1nm sqrt(6/1) = sqrt(6)nm
+#3) bFTS = bond(Srel)/bref 
+
+#lengths are in terms of Rg0 (except KuhnLen is in terms of bref)
+ 
+InputFileVersion = 3
+
+models { # triblock in mixture. PE, PSS, hexane, propanol
+  NumModels = 1
+  ModelType = MOLECULAR
+  #ModelType = POLYMERAF
+
+  monomers {
+    NSpecies = 3
+    KuhnLen  = 1.0 1.0 1.0     
+    Charge = 1.0 -1.0 0.0 #na+ cl- hoh
+    Dipole = 0.
+    Polarizability  = 0.
+    GaussSmearWidth = __aNa__ __aCl__ __aHOH__
+  }
+
+  chains {
+    NChains        = 0
+    Contourds      = 1
+    DiffuserMethod = SOS
+  }
+ #1:Na+, 2:Cl-, 3:HOH
+  smallmolecules {
+      PolymerReferenceN   = 1  # We use Nref=400. 480 would indicate that the solvent occupies 4 segment volumes.
+      nSmallMoleculeTypes = 3
+
+      smallmolecule1 {
+        Species = 1
+      }
+      smallmolecule2 {
+        Species = 2
+      }
+      smallmolecule3 {
+        Species = 3
+      }
+  }
+
+ model1 {
+    cell {
+      Dim         = 3
+      CellScaling = 20
+      CellLengths =  0.3 0.3 0.3
+      CellAngles  = 90 90 90
+      NPW         = 20 20 20 
+    }
+
+
+    interactions {
+      BExclVolume11 = __B11__  #15.1*(0.31nm)^3/(1nm^3=Rg0^3)
+      BExclVolume22 = __B22__
+      BExclVolume33 = __B33__
+      BExclVolume23 = __B23__
+      BExclVolume12 = __B12__
+      BExclVolume13 = __B13__
+      ApplyCompressibilityConstraint = False
+      EElecStatic   = __E__ #8.998777997 # 4pi IFF background epsilon=1
+      EApplied      = 0. 0. 0.      
+      #compressibility_invzetaN = 0.001 # Near incompressible
+    }
+
+    composition {
+       Ensemble = canonical
+       ChainVolFrac = 0.0
+       SmallMoleculeVolFrac = __x1__ __x2__ __x3__ #0.691 0.309
+       CChainDensity = __C__  #24.1
+    }
+
+    operators {
+      CalcHamiltonian       = true
+      CalcStressTensor      = false
+      CalcPressure          = true
+      CalcChemicalPotential = true
+      CalcStructureFactor   = false
+      CalcDensityOperator   = true
+      IncludeIdealGasTerms  = __idealterm__
+
+      CalcOrientationCorrelator = false
+      OrientationCorr_SpatialAverageRange = 0.25
+    }
+
+    initfields {
+      #ReadInputFields = HFields
+      #InputFieldsFile = fields0.bin
+
+      initfield1{
+        inittype = urng
+        #inittype = smalam
+        #InitParameters = 0.0001 1
+      }
+      initfield2{
+        inittype = urng
+        #inittype = smalam
+        #InitParameters = 0.0001 -1
+      }
+    }
+  }
+}
+
+
+simulation {
+  jobtype = CL
+  FieldUpdater = PO
+
+  TimeStepDT = 0.1
+  lambdaForceScale = 0.1 1.0
+  lambdaStressScale = 0.01
+
+  #jobtype = SCFT 
+  #FieldUpdater = SIS
+  #TimeStepDT = 1.0
+  #lambdaForceScale = 0.5 1.0
+
+  NumTimeStepsPerBlock = 500
+  #NumBlocks = 36000
+  NumBlocks = __NumBlocks__
+
+  RandomSeed = 0
+
+  SCFTForceStoppingTol = 1e-5
+  SCFTStressStoppingTol = 1e-4
+
+  VariableCell = false
+
+  IO {
+    KeepDensityHistory   = false
+    KeepFieldHistory     = false
+    DensityOutputByChain = false
+    OutputFormattedFields = false
+
+    OutputFields         = HFields
+    FieldOutputSpace     = rspace  # rspace, kspace or both
+  }
+}
+
+parallel {
+  CUDA_selectdevice = 0
+  CUDA_threadblocksize = 64
+
+  OpenMP_nthreads = 4
+}
