@@ -72,13 +72,18 @@ for t in range(ntsteps):
         for i in range(1,1+len(xs)):
             ini=re.sub('__x{}__'.format(i),str(xs[i-1]),ini)
         ini=re.sub('__C__',str(C1),ini)
-        ini=re.sub('__NumBlocks__',str(numBlocks),ini)
         ini=re.sub('__idealterm__',str(includeIdealTerm),ini)
+        if t == 0:
+            ini=re.sub('__NumBlocks__',str(numBlocks*3),ini)
+            ini=re.sub('__ReadField__','No',ini)
+        else:
+            ini=re.sub('__NumBlocks__',str(numBlocks),ini)
+            ini=re.sub('__ReadField__','Yes',ini)
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
     #call(["PolyFTSGPU.x","run.in"])
-    call(["/home/mnguyen/bin/PolyFTS/bin/Release/PolyFTSPLL.x","run.in"])
+    call('/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
 
     # Data analysis:
 
@@ -257,11 +262,12 @@ if ntsteps>1:
             ini=re.sub('__x{}__'.format(i),str(xs[i-1]),ini)
         ini=re.sub('__NumBlocks__',str(numBlocks*10),ini)
         ini=re.sub('__idealterm__',str(includeIdealTerm),ini)
+        ini=re.sub('__ReadField__','Yes',ini)
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
-    call(["/home/mnguyen/bin/PolyFTS/bin/Release/PolyFTSPLL.x","run.in"])
-
+#    call(["/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x","run.in"])
+    call('/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
     print('Final average C: {}'.format(Cavg))
     print('... cumulative runtime: {}'.format(time.time()-timestart))
     print(' === Final Run Done === ')
