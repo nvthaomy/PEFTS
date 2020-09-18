@@ -44,10 +44,10 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
  model1 {
     cell {
       Dim         = 3
-      CellScaling = 20
+      CellScaling = 13
       CellLengths =  0.3 0.3 0.3
       CellAngles  = 90 90 90
-      NPW         = 20 20 20 
+      NPW         = 13 13 13 
     }
 
 
@@ -85,19 +85,9 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
     }
 
     initfields {
-      #ReadInputFields = HFields
-      #InputFieldsFile = fields0.bin
+      ReadInputFields = __ReadField__
+      InputFieldsFile = fields.bin
 
-      initfield1{
-        inittype = urng
-        #inittype = smalam
-        #InitParameters = 0.0001 1
-      }
-      initfield2{
-        inittype = urng
-        #inittype = smalam
-        #InitParameters = 0.0001 -1
-      }
     }
   }
 }

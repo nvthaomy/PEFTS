@@ -12,10 +12,10 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
   #ModelType = POLYMERAF
 
   monomers {
-    NSpecies = 5 #A- B+ Na+ Cl- HOH
-    KuhnLen  = __b1__ __b3__ __b6__ __b7__ __b5__ # b* = bSrel*0.31nm/bref
-    GaussSmearWidth = __a1__ __a3__ __a6__ __a7__ __a5__
-    Charge = -1.0 1.0 1.0 -1.0 0.0 
+    NSpecies = 3 #A- B+ HOH
+    KuhnLen  = __b1__ __b3__  __b5__ # b* = bSrel*0.31nm/bref
+    GaussSmearWidth = __a1__ __a3__ __a5__
+    Charge = -1.0 1.0 0.0 
     Dipole = 0.
     Polarizability  = 0.   
   }
@@ -47,16 +47,10 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
 
   smallmolecules {
 #      PolymerReferenceN   = 1  
-      nSmallMoleculeTypes = 3
+      nSmallMoleculeTypes = 1
 
       smallmolecule1 {
         Species = 3
-      }
-      smallmolecule2 {
-        Species = 4
-      }
-      smallmolecule3 {
-        Species = 5
       }
   }
 
@@ -73,19 +67,10 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
     interactions {
       BExclVolume11 = __B11__
       BExclVolume12 = __B13__
-      BExclVolume13 = __B16__
-      BExclVolume14 = __B17__
-      BExclVolume15 = __B15__
+      BExclVolume13 = __B15__
       BExclVolume22 = __B33__
-      BExclVolume23 = __B36__
-      BExclVolume24 = __B37__
-      BExclVolume25 = __B35__
-      BExclVolume33 = __B66__
-      BExclVolume34 = __B67__
-      BExclVolume35 = __B56__
-      BExclVolume44 = __B77__
-      BExclVolume45 = __B57__
-      BExclVolume55 = __B55__
+      BExclVolume23 = __B35__
+      BExclVolume33 = __B55__
       EElecStatic   = __E__ #8.998777997 # 4pi IFF background epsilon=1
       EApplied      = 0. 0. 0.
       ApplyCompressibilityConstraint = False
@@ -95,7 +80,7 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
     composition {
        Ensemble = canonical
        ChainVolFrac = __x1__ __x2__
-       SmallMoleculeVolFrac = __x3__ __x4__ __x5__
+       SmallMoleculeVolFrac = __x5__
        CChainDensity =  __C__ # (4728 opc + 15 PAA * 42(DOP))/(0.3*19.9869)^3
     }
 
@@ -126,7 +111,7 @@ simulation {
   FieldUpdater = PO
 
   TimeStepDT = 0.01
-  lambdaForceScale = 0.1 0.5 1.0 1.0 1.0
+  lambdaForceScale = 0.1 0.2 1.0
   lambdaStressScale = 0.01
 
   #jobtype = SCFT 
@@ -134,7 +119,7 @@ simulation {
   #TimeStepDT = 1.0
   #lambdaForceScale = 0.5 1.0
 
-  NumTimeStepsPerBlock = 100
+  NumTimeStepsPerBlock = 50
   #NumBlocks = 36000
   NumBlocks = __NumBlocks__
 
@@ -160,6 +145,6 @@ parallel {
   CUDA_selectdevice = 0
   CUDA_threadblocksize = 64
 
-  OpenMP_nthreads = 4
+  OpenMP_nthreads = 6
 }
 

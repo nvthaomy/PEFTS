@@ -7,14 +7,14 @@
 InputFileVersion = 3
 
 models { # triblock in mixture. PE, PSS, hexane, propanol
-  NumModels = 1
-  ModelType = MOLECULAR
-  #ModelType = POLYMERAF
+  NumModels = 2
+  ModelType = POLYMERAF #MOLECULAR
+#  ModelType = POLYEIMPLSOLVENT
 
   monomers {
     NSpecies = 5 #A- B+ Na+ Cl- HOH
-    KuhnLen  = __b1__ __b3__ __b6__ __b7__ __b5__ # b* = bSrel*0.31nm/bref
-    GaussSmearWidth = __a1__ __a3__ __a6__ __a7__ __a5__
+    KuhnLen  = __b1__ __b2__ __b3__ __b4__ __b5__
+    GaussSmearWidth = __a1__ __a2__ __a3__ __a4__ __a5__
     Charge = -1.0 1.0 1.0 -1.0 0.0 
     Dipole = 0.
     Polarizability  = 0.   
@@ -25,14 +25,12 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
     polymerReferenceN = 1
     chain1{
       Label        = PAA
-#      Length       = 2 #=6*Rg0^2/b^2 = 6*1nm^2/(1.2131*0.31nm)^2= 42.4
       nBlocks      = 1
       NBeads       = __PAADOP__
       Nperblock    = __PAADOP__
       Architecture = linear
       Statistics   = FJC
       BlockSpecies = 1
-#      species = 1
     }
     chain2{
       Label        = PAH
@@ -47,9 +45,8 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
 
   smallmolecules {
 #      PolymerReferenceN   = 1  
-      nSmallMoleculeTypes = 3
-
-      smallmolecule1 {
+     nSmallMoleculeTypes = 3
+     smallmolecule1 {
         Species = 3
       }
       smallmolecule2 {
@@ -59,63 +56,75 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
         Species = 5
       }
   }
-
- model1 {
+ common {
     cell {
       Dim         = 3
       CellScaling =  20
       CellLengths =  0.3 0.3 0.3
       CellAngles  = 90 90 90
-      NPW         = 20 20 20 
+      NPW         = 32 32 32
     }
-
 
     interactions {
       BExclVolume11 = __B11__
-      BExclVolume12 = __B13__
-      BExclVolume13 = __B16__
-      BExclVolume14 = __B17__
+      BExclVolume12 = __B12__
+      BExclVolume13 = __B13__
+      BExclVolume14 = __B14__
       BExclVolume15 = __B15__
-      BExclVolume22 = __B33__
-      BExclVolume23 = __B36__
-      BExclVolume24 = __B37__
-      BExclVolume25 = __B35__
-      BExclVolume33 = __B66__
-      BExclVolume34 = __B67__
-      BExclVolume35 = __B56__
-      BExclVolume44 = __B77__
-      BExclVolume45 = __B57__
+      BExclVolume22 = __B22__
+      BExclVolume23 = __B23__
+      BExclVolume24 = __B24__
+      BExclVolume25 = __B25__
+      BExclVolume33 = __B33__
+      BExclVolume34 = __B34__
+      BExclVolume35 = __B35__
+      BExclVolume44 = __B44__
+      BExclVolume45 = __B45__
       BExclVolume55 = __B55__
       EElecStatic   = __E__ #8.998777997 # 4pi IFF background epsilon=1
       EApplied      = 0. 0. 0.
       ApplyCompressibilityConstraint = False
-      #compressibility_invzetaN = 0.001 # Near incompressible
     }
-
     composition {
-       Ensemble = canonical
-       ChainVolFrac = __x1__ __x2__
-       SmallMoleculeVolFrac = __x3__ __x4__ __x5__
-       CChainDensity =  __C__ # (4728 opc + 15 PAA * 42(DOP))/(0.3*19.9869)^3
+     ensemble = canonical
     }
 
     operators {
       CalcHamiltonian       = true
-      CalcStressTensor      = false
-      CalcPressure          = true
       CalcChemicalPotential = true
-      CalcStructureFactor   = false
-      CalcDensityOperator   = true
-      IncludeIdealGasTerms  = __idealterm__  
-
-      CalcOrientationCorrelator = false
+      CalcPressure          = true
+      IncludeIdealGasTerms  = true
+      #CalcDensityOperator   = true
       OrientationCorr_SpatialAverageRange = 0.25
+    }
+  } # end common
+
+ model1 {
+    interactions {
+      CChainDensity = __C1__
+    }
+    composition {
+       ChainVolFrac = __PhiPA1__ __PhiPC1__
+       SmallMoleculeVolFrac = __PhiCIC1__ __PhiCIA1__ __PhiW1__
     }
 
     initfields {
-      ReadInputFields = __ReadField__
-      InputFieldsFile = fields.bin
+      ReadInputFields = __READFIELDS__ 
+      InputFieldsFile = model1_fields.bin
+    }
+  }
+ model2 {
+    interactions {
+      CChainDensity = __C2__
+    }
+    composition {
+       ChainVolFrac = __PhiPA2__ __PhiPC2__
+       SmallMoleculeVolFrac = __PhiCIC2__ __PhiCIA2__ __PhiW2__
+    }
 
+    initfields {
+      ReadInputFields =  __READFIELDS__
+      InputFieldsFile = model2_fields.bin
     }
   }
 }
@@ -126,7 +135,7 @@ simulation {
   FieldUpdater = PO
 
   TimeStepDT = 0.01
-  lambdaForceScale = 0.1 0.5 1.0 1.0 1.0
+  lambdaForceScale = 0.1 0.1 0.1 1.0 1.0
   lambdaStressScale = 0.01
 
   #jobtype = SCFT 
@@ -134,9 +143,8 @@ simulation {
   #TimeStepDT = 1.0
   #lambdaForceScale = 0.5 1.0
 
-  NumTimeStepsPerBlock = 100
-  #NumBlocks = 36000
-  NumBlocks = __NumBlocks__
+  NumTimeStepsPerBlock = 50
+  NumBlocks =  __NUMBLOCKS__
 
   RandomSeed = 0
 
@@ -160,6 +168,6 @@ parallel {
   CUDA_selectdevice = 0
   CUDA_threadblocksize = 64
 
-  OpenMP_nthreads = 4
+  OpenMP_nthreads = __numThreads__
 }
 

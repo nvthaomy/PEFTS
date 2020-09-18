@@ -69,13 +69,18 @@ for t in range(ntsteps):
         ini=re.sub('__x2__',str(x2),ini)
         ini=re.sub('__x3__',str(x3),ini)
         ini=re.sub('__C__',str(C1),ini)
-        ini=re.sub('__NumBlocks__',str(numBlocks),ini)
         ini=re.sub('__idealterm__',str(includeIdealTerm),ini)
+        if t == 0:
+            ini=re.sub('__NumBlocks__',str(numBlocks*3),ini)
+            ini=re.sub('__ReadField__','No',ini)
+        else:
+            ini=re.sub('__NumBlocks__',str(numBlocks),ini)
+            ini=re.sub('__ReadField__','Yes',ini)
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
     #call(["PolyFTSGPU.x","run.in"])
-    call(["/home/mnguyen/bin/PolyFTS/bin/Release/PolyFTSPLL.x","run.in"])
+    call('/home/mnguyen/bin/PolyFTS_hotfix-DiscreteChainBugs/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
 
     # Data analysis:
 
@@ -267,10 +272,11 @@ with open(template,'r') as myfile:
     ini=re.sub('__x3__',str(x3),ini)
     ini=re.sub('__NumBlocks__',str(numBlocks*10),ini)
     ini=re.sub('__idealterm__',str(includeIdealTerm),ini)
+    ini=re.sub('__ReadField__','Yes',ini)
     runfile = open("run.in","w")
     runfile.write(ini)
     runfile.close()
-call(["/home/mnguyen/bin/PolyFTS/bin/Release/PolyFTSPLL.x","run.in"])
+call('/home/mnguyen/bin/PolyFTS_hotfix-DiscreteChainBugs/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
 
 
 print('Final average C: {}'.format(Cavg))
