@@ -34,22 +34,22 @@ IncludeEvRPA = False
 chain = 'DGC'
 
 # Composition
-nC = 300
+dC3 = 0.1
+nC = 100
 
-C3s = np.linspace(0.05780, 3.0, endpoint = True, num = nC)
-C4s = np.linspace(0.05780, 3.0, endpoint = True, num = nC)
-C1s = np.ones(nC) * 0.13345
-C2s = np.ones(nC) * 0.13345
-C5s = np.ones(nC) * 32.74997
+C1_0 =  0.0844367107709645
+C2_0 = 0.1266565074986811
+Csalt = 11.601942707030037-C1_0
+C5_0 = 6.618320679339323
+C3_0 = Csalt + C1_0
+C4_0 = Csalt + C2_0
 
-C1I0s = np.ones(nC) * 1.51918996930873E-32
-C2I0s = np.ones(nC) * 6.2480755317718E-26
-C3I0s = C3s.copy()
-C4I0s = C4s.copy()
-C3I0s[0] =  0.060459138
-C4I0s[0] =  0.060459138
-C5I0s = np.ones(nC) * 33.40994244
-fI0s  =  np.ones(nC) * 0.8
+C1I0 = 1.1273397252566825e-06
+C2I0 =  8.249102541619244e-06
+C3I0 = 11.756010539263837
+C4I0 = 11.756017661026654
+C5I0 = 6.911558007745928
+fI0  = 0.30877815178155593
 
 ensemble = 'NPT'
 Ptarget = 285.9924138 
@@ -110,7 +110,7 @@ gme_list = None
 gm_list = None
 
 data = open(dataFile,'w')
-data.write('# CPAA CPAH CNa CCl CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 CI4 CII4 CI5 CII5  dP dmuPAANa dmuPAHCl dmuNaCl dmuW PI PII relDeltaG calculated_P_bulk\n')
+data.write('# CPAA CPAH CNa CCl CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 CI4 CII4 CI5 CII5  dP dmuPAANa dmuPAHCl dmuNaCl dmuW PI PII relDeltaG calculated_P_bulk C3\n')
 data.flush()
 
 log = open(logFile,'w')
@@ -145,24 +145,36 @@ def BaroStat(xs, Ptarget, Ctot, RPA, dtC=0.2, maxIter = 1000 ,tol = 1.e-6):
                 step += 1
         return C1
     
-for i, C3 in enumerate(C3s):
+# CI0 values to estimate slope and initialize guess for next run by linear extrapolation
+CI_1 = []
+CI_2 = []
+C3_1 = 0
+C3_2 = 0
+fI_1 = 0
+fI_2 = 0
+shiftBulk = False
+
+fPAA = C1_0/(C1_0+C2_0)
+C3 = C3_0
+for i in range(nC):
     try:
-        os.mkdir('CNaCl{}'.format(round(C3s[i],5)))
+        os.mkdir('CNaCl{}'.format(round(C3,5)))
     except:
         pass
-    os.chdir('CNaCl{}'.format(round(C3s[i],5)))
-    print('==CNaCl {}=='.format(round(C3s[i],5)))
-    log.write('==CNaCl {}=='.format(round(C3s[i],5)))
-    log.flush()
-    
+    os.chdir('CNaCl{}'.format(round(C3,5)))
+    print('==CNaCl {}=='.format(round(C3,5)))
+    log.write('==CNaCl {}=='.format(round(C3,5)))
+    log.flush()    
     
     gibbsLog = open(gibbsLogFile,'w')
     gibbsLog.write('# step  fI  fII  CI_1  CII_1  CI_2  CII_2  CI_3  CII_3  CI_4  CII_4  CI_5  CII_5  ')
     gibbsLog.write('FI  FII  PI  PII  muI_pair1  muII_pair1  muI_pair2  muII_pair2  muI_pair3  muII_pair3  muI_5  muII_5\n')
     gibbsLog.flush()
     
-    Cs = np.array([C1s[i],C2s[i],C3s[i],C4s[i],C5s[i]])
-    # number fraction of all species
+    if i == 0:
+        Cs = np.array([C1_0,C2_0,C3_0,C4_0,C5_0])
+    else:
+        Cs = np.array([C1,C2,C3,C4,C5])
     xs = Cs/sum(Cs)
     
     # number of charged molecule types
@@ -171,17 +183,41 @@ for i, C3 in enumerate(C3s):
     
     # Initialize
     if i == 0:
-        CI0 = [C1I0s[i], C2I0s[i], C3I0s[i], C4I0s[i], C5I0s[i]] 
-        fI = fI0s[i]
-        Ctot = np.sum(Cs)
+        CI0 = [C1I0, C2I0, C3I0, C4I0, C5I0]
+        fI = fI0
+        GibbsTolerance = GibbsTolerance0
     else:
-        if not 'nan' in s and not 'inf' in s: #initiate from previous salt concentration
-            CI0 = CI
+        GibbsTolerance = GibbsTolerance1
+
+        if len(CI_1) > 0 and len(CI_2) > 0:
+            CI0 = np.zeros(number_species)
+            fI = (fI_2 - fI_1)/(C3_2 - C3_1) * (C3-C3_2) + fI_2
+            # linear space for small molecules
+            y2 = np.array(CI_2)
+            y1 = np.array(CI_1)
+            m = (y2-y1)/(C3_2 - C3_1)
+            y3 = m * (C3-C3_2) + y2
+            CI0 = y3
+            # log space for CPE
+            y2 = np.log10(np.array(CI_2))
+            y1 = np.log10(np.array(CI_1))
+            m = (y2-y1)/(C3_2 - C3_1)
+            y3 = m * (C3-C3_2) + y2
+            CI0[:2] = 10.**y3[:2]
+
+        elif shiftBulk:
             fI = fI
-        else: #otherwise, initiate from the initial guess
-            CI0 = [C1I0s[i], C2I0s[i], C3I0s[i], C4I0s[i], C5I0s[i]]
-            fI = fI0s[i]
-            Ctot = np.sum(Cs)
+            CI0 = CI
+
+        else:
+            if not 'nan' in s and not 'inf' in s: #initiate from previous salt concentration
+                CI0 = CI
+                fI = fI
+            else: #otherwise, initiate from the initial guess
+                CI0 = [C1I0, C2I0, C3, C4, C5]
+                fI = fI0
+
+    Ctot = sum(Cs)
     CI = np.array(CI0)        
     fII  = 1.-fI
     CII = (Cs-CI*fI)/fII
@@ -263,8 +299,9 @@ for i, C3 in enumerate(C3s):
         s = '{} {} {} {} {} {} '.format(step,fracErr, G, Ctot, P0, dP)
         for a in dmuEff:
             s+= '{} '.format(a)        
-        log.write(s + '\n')
-        log.flush()
+        if step % 100 == 0:
+            log.write(s + '\n')
+            log.flush(
         
         # Update phase I
         CI_prev = CI.copy()
@@ -363,7 +400,25 @@ for i, C3 in enumerate(C3s):
             log.write('Over max iteration number\n')
             print('Over max iteration number')
             break
-    fracErr_prev = fracErr
+        if fracErr <= GibbsTolerance:
+            if len(CI_1) == 0:
+                CI_1 = np.array(CI)
+                C3_1 = C3
+                fI_1 = fI
+            elif len(CI_1) > 0 and len(CI_2) == 0:
+                CI_2 = np.array(CI)
+                C3_2 = C3
+                fI_2 = fI
+            elif len(CI_1) > 0 and len(CI_2) > 0:
+                CI_1 = CI_2.copy()
+                C3_1 = C3_2
+                fI_1 = fI_2
+                CI_2 = np.array(CI)
+                C3_2 = C3
+                fI_2 = fI
+
+    log.write(s + '\n')
+    log.flush()
     t1 = time.time()
     t = t1-t0
     log.write('==Finish after {} minutes==\n'.format(t/60.))
@@ -383,9 +438,40 @@ for i, C3 in enumerate(C3s):
     s += '{} '.format(dP)
     for a in dmuEff:
             s+= '{} '.format(a)
-    s += '{} {} {} {} \n'.format(PI, PII, G, P0)        
+    s += '{} {} {} {} {}\n'.format(PI, PII, G, P0, C3)        
     data.write(s)
     data.flush()
+
+    # initialize bulk composition for next point
+    if fI < 0.1 or fI > 0.9:
+        # shift bulk composition if get too close to the boundary
+        fI = 0.6
+        [C1,C2,C3,C4,C5] = fI * CI + (1-fI) * CII
+        # check PAA content and electroneutrality 
+        CPE = C1+C2
+        Csalt = C3-C1
+        C1 = fPAA * CPE
+        C2 = CPE-C1
+        C3 = C1 + Csalt
+        C4 = C2 + Csalt
+
+        shiftBulk = True
+        CI_1 = []
+        CI_2 = []
+        log.write('\n==Shift bulk composition==\n')
+    else:
+        shiftBulk = False
+        # update C with new Ctot
+        if not 'nan' in s and not 'inf' in s:
+            [C1,C2,C3,C4,C5] = Cs
+        else:
+            shiftBulk = False
+            Ctot_tmp = np.sum(np.array([C1_0,C2_0,C3_0,C4_0,C5_0]))
+            Cs_tmp = Ctot_tmp * xs # bring back to initial Ctot
+            [C1,C2,C3,C4,C5] = Cs_tmp
+        C3 += dC3
+        C4 += dC3
+
     os.chdir(cwd)
 
 
