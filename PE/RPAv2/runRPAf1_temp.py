@@ -108,7 +108,7 @@ gme_list = None
 gm_list = None
 
 data = open(dataFile,'w')
-data.write('# CPAA CPAH CNa CCl CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 CI4 CII4 CI5 CII5  dP dmuPAANa dmuPAHCl dmuNaCl dmuW PI PII relDeltaG calculated_P_bulk C3\n')
+data.write('# CPAA CPAH CNa CCl CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 CI4 CII4 CI5 CII5  dP dmuPAANa dmuPAHCl dmuNaCl dmuW PI PII relDeltaG calculated_P_bulk fracErr C3\n')
 data.flush()
 
 log = open(logFile,'w')
@@ -434,7 +434,7 @@ for i in range(nC):
     s += '{} '.format(dP)
     for a in dmuEff:
             s+= '{} '.format(a)
-    s += '{} {} {} {} {} \n'.format(PI, PII, G, P0, C3)        
+    s += '{} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, C3)        
     data.write(s)
     data.flush()
 
