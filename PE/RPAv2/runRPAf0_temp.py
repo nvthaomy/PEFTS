@@ -21,8 +21,8 @@ import os
 dataFile = 'gibbs_final1.dat'
 logFile = 'log1.txt'
 gibbsLogFile = 'gibbs.dat'
-Dt0 = [0.002,0.1, 0.2,0.2,0.1,0.02]
-DtCpair0 = [0.02,0.02,0.002]
+Dt0 = [0.001,0.1, 0.2,0.2,0.1,0.01]
+DtCpair0 = [0.01,0.010,0.001]
 DtCtot0 = 0.002
 maxIter = 30000
 program = 'polyFTS'
@@ -56,29 +56,27 @@ ensemble = 'NPT'
 Ptarget = 285.9924138 
 
 # Molecules
-number_species = 7
-charges = np.array([-1,0,1,0,1,-1,0], dtype = float) # A-, A, B+, B, Na+, Cl-, HOH
+number_species = 5
+charges = np.array([0,0,1,-1,0], dtype = float) # A-, A, B+, B, Na+, Cl-, HOH
 
 number_molecules = 5
-chargedPairs = [[0,2],[1,3],[2,3]]       # only include pairs
-#PAADOP = 20
-#PAHDOP = 20
-struc = [[0,1]*10,[2,3]*10,[4],[5],[6]]
-molCharges = [-0.5,0.5,1,-1,0] # charge per segment length of each molecule type
+chargedPairs = [[2,3]]
+PAADOP = 150
+PAHDOP = 150
+struc = [[0]*PAADOP,[1]*PAHDOP,[2],[3],[4]]
+molCharges = np.array([0,0,1,-1,0], dtype = float) # charge per segment length of each molecule type
 
 # Forcefield
 u0 =[
-[__B11__,__B12__,__B13__,__B14__,__B16__,__B17__,__B15__],
-[__B12__,__B22__,__B23__,__B24__,__B26__,__B27__,__B25__],
-[__B13__,__B23__,__B33__,__B34__,__B36__,__B37__,__B35__],
-[__B14__,__B24__,__B34__,__B44__,__B46__,__B47__,__B45__],
-[__B16__,__B26__,__B36__,__B46__,__B66__,__B67__,__B56__],
-[__B17__,__B27__,__B37__,__B47__,__B67__,__B77__,__B57__],
-[__B15__,__B25__,__B35__,__B45__,__B56__,__B57__,__B55__]]
+[__B22__,__B24__,__B26__,__B27__,__B25__],
+[__B24__,__B44__,__B46__,__B47__,__B45__],
+[__B26__,__B46__,__B66__,__B67__,__B56__],
+[__B27__,__B47__,__B67__,__B77__,__B57__],
+[__B25__,__B45__,__B56__,__B57__,__B55__]]
 
-abead = [__a1__,__a2__,__a3__,__a4__,__a6__,__a7__,__a5__]
+abead = [__a2__,__a4__,__a6__,__a7__,__a5__]
 lB = __lB__
-b = [__b1__,__b2__,__b3__,__b4__,__b6__,__b7__,__b5__]
+b = [__b2__,__b4__,__b6__,__b7__,__b5__]
 
 # Numerical
 V = 20.
@@ -111,7 +109,7 @@ gme_list = None
 gm_list = None
 
 data = open(dataFile,'w')
-data.write('# CPAA CPAH CNa CCl CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 CI4 CII4 CI5 CII5  dP dmuPAANa dmuPAHCl dmuNaCl dmuW PI PII relDeltaG calculated_P_bulk fracErr C3\n')
+data.write('# CPAA CPAH CNa CCl CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 CI4 CII4 CI5 CII5  dP dmuPAA dmuPAH dmuNaCl dmuW PI PII relDeltaG calculated_P_bulk fracErr C3\n')
 data.flush()
 
 log = open(logFile,'w')
@@ -145,7 +143,6 @@ def BaroStat(xs, Ptarget, Ctot, RPA, dtC=0.2, maxIter = 1000 ,tol = 1.e-6):
             else:
                 step += 1
         return C1
-    
 # CI0 values to estimate slope and initialize guess for next run by linear extrapolation
 CI_1 = []
 CI_2 = []
@@ -157,6 +154,7 @@ shiftBulk = False
 
 fPAA = C1_0/(C1_0+C2_0)
 C3 = C3_0
+   
 for i in range(nC):
     try:
         os.mkdir('CNaCl{}'.format(round(C3,5)))
@@ -165,11 +163,11 @@ for i in range(nC):
     os.chdir('CNaCl{}'.format(round(C3,5)))
     print('==CNaCl {}=='.format(round(C3,5)))
     log.write('==CNaCl {}=='.format(round(C3,5)))
-    log.flush()    
+    log.flush()
     
     gibbsLog = open(gibbsLogFile,'w')
     gibbsLog.write('# step  fI  fII  CI_1  CII_1  CI_2  CII_2  CI_3  CII_3  CI_4  CII_4  CI_5  CII_5  ')
-    gibbsLog.write('FI  FII  PI  PII  muI_pair1  muII_pair1  muI_pair2  muII_pair2  muI_pair3  muII_pair3  muI_5  muII_5\n')
+    gibbsLog.write('FI  FII  PI  PII  muI_1  muII_1  muI_2  muII_2  muI_pair3  muII_pair3  muI_5  muII_5\n')
     gibbsLog.flush()
     
     if i == 0:
@@ -225,6 +223,7 @@ for i in range(nC):
     Dt = Dt0
     DtCpair = DtCpair0
     DtCtot = DtCtot0 
+
     t0 = time.time()
     step = 0
     log.write('\n=step\tFracErr\tdeltaG\tCtot\tP0\tdP\tdMus=\n')
@@ -266,13 +265,18 @@ for i in range(nC):
         G = (fI * FI + fII * FII - F0)/F0    
         
         # Get effective chemical potentials
-        muEffI = np.zeros(nCharged - 1 + nNeutral)
+        muEffI = np.zeros(len(chargedPairs) + nNeutral)
+        muEffI[0] = muI[0]
+        muEffI[1] = muI[1]
         for idx,[m,n] in enumerate(chargedPairs):
-            muEffI[idx] = muI[m]/DOP[m] * np.abs(molCharges[n]) + muI[n]/DOP[n] * np.abs(molCharges[m])
+            muEffI[idx+2] = muI[m]/DOP[m] * np.abs(molCharges[n]) + muI[n]/DOP[n] * np.abs(molCharges[m])
         muEffI[-1] = muI[-1] # water chemical potential
-        muEffII = np.zeros(nCharged - 1 + nNeutral)
+
+        muEffII = np.zeros(len(chargedPairs) + nNeutral)
+        muEffII[0] = muII[0]
+        muEffII[1] = muII[1]
         for idx,[m,n] in enumerate(chargedPairs):
-            muEffII[idx] = muII[m]/DOP[m] * np.abs(molCharges[n]) + muII[n]/DOP[n] * np.abs(molCharges[m])
+            muEffII[idx+2] = muII[m]/DOP[m] * np.abs(molCharges[n]) + muII[n]/DOP[n] * np.abs(molCharges[m])
         muEffII[-1] = muII[-1] # water chemical potential
         
         # Calculate errors
@@ -332,9 +336,7 @@ for i in range(nC):
         elif dt < dtmin:
             dt = 0.8 * dtmin 
         CI[0] = CI[0] + dt
-        #CI[0] = CI[0] - DtCpair[0] * np.min([CI[0], CII[0]])/5. * dmuEff[0] 
         # PAH
-        #dt = - DtCpair[1] * dmuEff[1]
         dt = - DtCpair[1] *  np.min([CI[1], CII[1]]) * dmuEff[1]
         dtmin = - CI[1]
         dtmax = Cs[1]/fI - CI[1]
@@ -343,7 +345,6 @@ for i in range(nC):
         elif dt < dtmin:
             dt = 0.8 * dtmin   
         CI[1] = CI[1] + dt
-        #CI[1] = CI[1] - DtCpair[1] * np.min([CI[1], CII[1]])/5. * dmuEff[1]
         # HOH
         CI[4] = CI[4] - Dt[-1] * np.min([CI[4], CII[4]])/5. * dmuEff[3]
         
@@ -390,9 +391,9 @@ for i in range(nC):
             break
             print('Values are nan or inf')            
         if step > 1000 and  fracErr <= 0.05: #speed up
-            Dt = np.array(Dt0) * 2.
-            DtCpair = np.array(DtCpair0) * 2.
-            DtCtot = DtCtot0 * 2.
+            Dt = np.array(Dt0) * 2
+            DtCpair = np.array(DtCpair0) * 2
+#            DtCtot = DtCtot0 * 1.5
         if step > maxIter and step != 1:
             log.write('Over max iteration number\n')
             print('Over max iteration number')
@@ -401,6 +402,7 @@ for i in range(nC):
             log.write('Over max iteration number\n')
             print('Over max iteration number')
             break
+
         if fracErr <= GibbsTolerance:
             if len(CI_1) == 0:
                 CI_1 = np.array(CI)
@@ -417,7 +419,6 @@ for i in range(nC):
                 CI_2 = np.array(CI)
                 C3_2 = C3
                 fI_2 = fI
-
     log.write(s + '\n')
     log.flush()
     t1 = time.time()
@@ -439,12 +440,12 @@ for i in range(nC):
     s += '{} '.format(dP)
     for a in dmuEff:
             s+= '{} '.format(a)
-    s += '{} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, C3)
+    s += '{} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, C3)        
     data.write(s)
     data.flush()
 
     # initialize bulk composition for next point
-    if fI < 0.1 or fI > 0.9:
+    if fI < 0.2 or fI > 0.8:
         # shift bulk composition if get too close to the boundary
         fI = 0.6
         [C1,C2,C3,C4,C5] = fI * CI + (1-fI) * CII
