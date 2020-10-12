@@ -336,6 +336,15 @@ for i in range(nC):
                 CI[idx] = Cs[idx]/fI * 0.99
                 print('CI[{}] reaches max'.format(idx))
         
+        elif CI[2] > Cs[2]/fI: # if na+ of cl- are over the max range, reduce the concentration of both ions 
+            CI2_old = CI[2]
+            CI[2] = 0.99 * Cs[2]/fI
+            CI[3] = CI[3] - (CI2_old-CI[2])
+        elif CI[3] > Cs[3]/fI:
+            CI3_old = CI[3]
+            CI[3] = 0.99 * Cs[3]/fI
+            CI[2] = CI[2] - (CI3_old-CI[3])
+
         # Update phase II
         fII = 1-fI
         CII = (Cs - fI*CI) / fII
