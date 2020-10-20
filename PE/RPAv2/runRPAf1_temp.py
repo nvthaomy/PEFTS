@@ -486,7 +486,8 @@ for i in range(nC):
             [C1,C2,C3,C4,C5] = Cs_tmp
         C3 += dC3
         C4 += dC3
-
+        if C3<0. or C4<0.:
+            break
     os.chdir(cwd)
 
 
