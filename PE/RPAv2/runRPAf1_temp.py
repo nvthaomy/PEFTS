@@ -202,7 +202,10 @@ for i in range(nC):
             y1 = np.log10(np.array(CI_1))
             m = (y2-y1)/(C3_2 - C3_1)
             y3 = m * (C3-C3_2) + y2
-            CI0[:2] = 10.**y3[:2]
+            if y2[0] < -10. or y1[0] < -10.: 
+                CI0[0] = 10.**y3[0]
+            if y2[1] < -10. or y1[1] < -10.:
+                CI0[1] = 10.**y3[1]
 
         elif shiftBulk:
             fI = fI
@@ -215,6 +218,13 @@ for i in range(nC):
             else: #otherwise, initiate from the initial guess
                 CI0 = [C1I0, C2I0, C3, C4, C5]
                 fI = fI0
+
+    # make sure initial guess is not out od range
+    for idx, c in enumerate(CI0):
+        if c < 0:
+            CI0[idx] = CI[idx] * 0.5
+        elif c > Cs[idx]/fI:
+            CI0[idx] = Cs[idx]/fI * 0.99
 
     Ctot = sum(Cs)
     CI = np.array(CI0)        

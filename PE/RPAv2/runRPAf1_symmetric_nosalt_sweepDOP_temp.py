@@ -18,11 +18,12 @@ from scipy.optimize import least_squares
 import time, copy
 import os
 
-dataFile = 'gibbs_final1.dat'
-logFile = 'log1.txt'
+dataFile = 'gibbs_final5.dat'
+logFile = 'log5.txt'
 gibbsLogFile = 'gibbs.dat'
-Dt0 = [0.001,0.02, 0.02,0.02]
-DtCtot0 = 0.002
+Dt0 = [0.005,0.1, 0.2,0.2,0.1,0.1]
+DtCpair0 = [0.1,0.10,0.01]
+DtCtot0 = 0.005
 maxIter = 30000
 program = 'polyFTS'
 jobtype = 'RPA' 
@@ -34,44 +35,40 @@ IncludeEvRPA = False
 chain = 'DGC'
 
 # Composition
-dC = 0.1
-nC = 1
+DOPs = [12, 10, 8, 6, 4]
+nC = len(DOPs)
+C1_0 = 0.40243571071789197 
+C5_0 = 31.618840528160554
+C2_0 = C1_0
 
-C1_0 =  0.0844367107709645
-C2_0 = 0.1266565074986811
-C5_0 = 6.618320679339323
-
-C1I0 = 1.1273397252566825e-06
-C2I0 =  8.249102541619244e-06
-C5I0 = 6.911558007745928
-fI0  = 0.30877815178155593
+C1I0 = 2.3298113013680016e-26 
+C2I0 = 2.3298113013680016e-26 
+C5I0 = 33.50461482323487 
+fI0  = 0.7000161472
 
 ensemble = 'NPT'
 Ptarget = 285.9924138 
 
 # Molecules
 number_species = 3
-charges = np.array([0,0,0], dtype = float) # A-, A, B+, B, Na+, Cl-, HOH
+charges = np.array([-1,1,0], dtype = float) # A-, B+, HOH
 
 number_molecules = 3
-chargedPairs = []
-PAADOP = 150
-PAHDOP = 150
-struc = [[0]*PAADOP,[1]*PAHDOP,[2]]
-molCharges = np.array([0,0,0], dtype = float) # charge per segment length of each molecule type
+chargedPairs = [[0,1]]       # only include pairs
+molCharges = np.array([-1,1,0], dtype = float) # charge per segment length of each molecule type
 
 # Forcefield
 u0 =[
-[__B22__,__B24__,__B25__],
-[__B24__,__B44__,__B45__],
-[__B25__,__B45__,__B55__]]
+[__B11__,__B13__,__B15__],
+[__B13__,__B33__,__B35__],
+[__B15__,__B35__,__B55__]]
 
-abead = [__a2__,__a4__,__a5__]
+abead = [__a1__,__a3__,__a5__]
 lB = __lB__
-b = [__b2__,__b4__,__b5__]
+b = [__b1__,__b3__,__b5__]
 
 # Numerical
-V = 20.
+V = 100.
 kmin = 1.e-5
 kmax = 20
 nk = 200
@@ -80,9 +77,7 @@ VolFracBounds=[0.00001,1 - 0.00001]
 '''Set up RPA object'''
 import RPA_v2 as RPAModule
 RPA = RPAModule.RPA(number_species,number_molecules)
-RPA.Setstruc(struc)
 RPA.Setchain(chain)
-#RPA.SetDOP(DOP)
 RPA.Setcharge(charges)
 RPA.Setabead(abead)
 RPA.Setu0(u0)
@@ -93,7 +88,6 @@ RPA.Setkmin(kmin)
 RPA.Setkmax(kmax)
 RPA.Setnk(nk)
 RPA.IncludeEvRPA = IncludeEvRPA
-DOP = RPA.DOP
 RPA1 = copy.deepcopy(RPA)
 RPA2 = copy.deepcopy(RPA)
 np.random.seed(555) 
@@ -101,7 +95,7 @@ gme_list = None
 gm_list = None
 
 data = open(dataFile,'w')
-data.write('# CPAA CPAH CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3  dP dmuPAA dmuPAH dmuW PI PII relDeltaG calculated_P_bulk fracErr\n')
+data.write('# CPAA CPAH CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 dP dmuPAAPAH dmuW PI PII relDeltaG calculated_P_bulk fracErr DOP\n')
 data.flush()
 
 log = open(logFile,'w')
@@ -135,78 +129,44 @@ def BaroStat(xs, Ptarget, Ctot, RPA, dtC=0.2, maxIter = 1000 ,tol = 1.e-6):
             else:
                 step += 1
         return C1
-# CI0 values to estimate slope and initialize guess for next run by linear extrapolation
-CI_1 = []
-CI_2 = []
-C3_1 = 0
-C3_2 = 0
-fI_1 = 0
-fI_2 = 0
-shiftBulk = False
 
-fPAA = C1_0/(C1_0+C2_0)
-C1 = C1_0
-
-for i in range(nC):
+for i,N in enumerate(DOPs):
     try:
-        os.mkdir('CPAA{}'.format(round(C1,5)))
+        os.mkdir('N{}'.format(round(N,5)))
     except:
         pass
-    os.chdir('CPAA{}'.format(round(C1,5)))
-    print('==CPAA {}=='.format(round(C1,5)))
-    log.write('==CPAA {}=='.format(round(C1,5)))
+    os.chdir('N{}'.format(round(N,5)))
+    print('==N {}=='.format(round(N,5)))
+    log.write('==N {}=='.format(round(N,5)))
     log.flush()
     
     gibbsLog = open(gibbsLogFile,'w')
     gibbsLog.write('# step  fI  fII  CI_1  CII_1  CI_2  CII_2  CI_3  CII_3 ')
-    gibbsLog.write('FI  FII  PI  PII  muI_1  muII_1  muI_2  muII_2  muI_3  muII_3\n')
+    gibbsLog.write('FI  FII  PI  PII  muI_pair1  muII_pair1  muI_3  muII_3 \n')
     gibbsLog.flush()
     
-    if i == 0:
-        Cs = np.array([C1_0,C2_0,C5_0])
-    else:
-        Cs = np.array([C1,C2,C5])
+    Cs = np.array([C1_0,C2_0,C5_0])
     xs = Cs/sum(Cs)
     
     # number of charged molecule types
     nCharged = len([c for c in molCharges if np.abs(c) != 0])
     nNeutral = number_molecules - nCharged
     
+    struc = [[0]*N,[1]*N,[2]] 
+    RPA.Setstruc(struc) 
+    DOP = RPA.DOP
+    RPA1 = copy.deepcopy(RPA) 
+    RPA2 = copy.deepcopy(RPA) 
+    gm_list = None
+    gme_list = None 
+
     # Initialize
     if i == 0:
         CI0 = [C1I0, C2I0, C5I0]
         fI = fI0
-        GibbsTolerance = GibbsTolerance0
     else:
-        GibbsTolerance = GibbsTolerance1
-
-#        if len(CI_1) > 0 and len(CI_2) > 0:
-#            CI0 = np.zeros(number_species)
-#            fI = (fI_2 - fI_1)/(C3_2 - C3_1) * (C3-C3_2) + fI_2
-#            # linear space for small molecules
-#            y2 = np.array(CI_2)
-#            y1 = np.array(CI_1)
-#            m = (y2-y1)/(C3_2 - C3_1)
-#            y3 = m * (C3-C3_2) + y2
-#            CI0 = y3
-#            # log space for CPE
-#            y2 = np.log10(np.array(CI_2))
-#            y1 = np.log10(np.array(CI_1))
-#            m = (y2-y1)/(C3_2 - C3_1)
-#            y3 = m * (C3-C3_2) + y2
-#            CI0[:2] = 10.**y3[:2]
-
-        if shiftBulk:
-            fI = fI
-            CI0 = CI
-
-        else:
-            if not 'nan' in s and not 'inf' in s: #initiate from previous salt concentration
-                CI0 = CI
-                fI = fI
-            else: #otherwise, initiate from the initial guess
-                CI0 = [C1I0, C2I0, C5]
-                fI = fI0
+        CI0 = CI.copy()
+        fI = fI
     # make sure initial guess is not out od range
     for idx, c in enumerate(CI0):
         if c < 0:
@@ -214,11 +174,13 @@ for i in range(nC):
         elif c > Cs[idx]/fI:
             CI0[idx] = Cs[idx]/fI * 0.99
 
+    GibbsTolerance = GibbsTolerance0
     Ctot = sum(Cs)
     CI = np.array(CI0)        
     fII  = 1.-fI
     CII = (Cs-CI*fI)/fII
     Dt = Dt0
+    DtCpair = DtCpair0
     DtCtot = DtCtot0 
 
     t0 = time.time()
@@ -262,18 +224,13 @@ for i in range(nC):
         G = (fI * FI + fII * FII - F0)/F0    
         
         # Get effective chemical potentials
-        muEffI = np.zeros(len(chargedPairs) + nNeutral)
-        muEffI[0] = muI[0]
-        muEffI[1] = muI[1]
+        muEffI = np.zeros(nCharged - 1 + nNeutral)
         for idx,[m,n] in enumerate(chargedPairs):
-            muEffI[idx+2] = muI[m]/DOP[m] * np.abs(molCharges[n]) + muI[n]/DOP[n] * np.abs(molCharges[m])
+            muEffI[idx] = muI[m]/DOP[m] * np.abs(molCharges[n]) + muI[n]/DOP[n] * np.abs(molCharges[m])
         muEffI[-1] = muI[-1] # water chemical potential
-
-        muEffII = np.zeros(len(chargedPairs) + nNeutral)
-        muEffII[0] = muII[0]
-        muEffII[1] = muII[1]
+        muEffII = np.zeros(nCharged - 1 + nNeutral)
         for idx,[m,n] in enumerate(chargedPairs):
-            muEffII[idx+2] = muII[m]/DOP[m] * np.abs(molCharges[n]) + muII[n]/DOP[n] * np.abs(molCharges[m])
+            muEffII[idx] = muII[m]/DOP[m] * np.abs(molCharges[n]) + muII[n]/DOP[n] * np.abs(molCharges[m])
         muEffII[-1] = muII[-1] # water chemical potential
         
         # Calculate errors
@@ -309,8 +266,11 @@ for i in range(nC):
         CI_prev = CI.copy()
         fI = fI + Dt[0] * (PI-PII)
         
-        # PAA
-        dt =  - Dt[1] *  np.min([CI[0], CII[0]]) * dmuEff[0] 
+        # PAA-PAH
+        if CI[0] > 1e-300:
+            dt =  - DtCpair[0] *  np.min([CI[0], CII[0]]) * dmuEff[0] 
+        else:
+            dt =  - DtCpair[0] * 1e-100 * dmuEff[0]
         dtmin = - CI[0]
         dtmax = Cs[0]/fI - CI[0]
         if dt > dtmax:
@@ -318,17 +278,8 @@ for i in range(nC):
         elif dt < dtmin:
             dt = 0.8 * dtmin 
         CI[0] = CI[0] + dt
-        # PAH
-        dt = - Dt[2] *  np.min([CI[1], CII[1]]) * dmuEff[1]
-        dtmin = - CI[1]
-        dtmax = Cs[1]/fI - CI[1]
-        if dt > dtmax:
-            dt = 0.8 * dtmax
-        elif dt < dtmin:
-            dt = 0.8 * dtmin   
-        CI[1] = CI[1] + dt
         # HOH
-        CI[2] = CI[2] - Dt[-1] * np.min([CI[2], CII[2]])/5. * dmuEff[2]
+        CI[-1] = CI[-1] - Dt[-1] * np.min([CI[-1], CII[-1]])/5. * dmuEff[-1]
         
         # fix overflow
         if fI > VolFracBounds[1]:
@@ -338,19 +289,13 @@ for i in range(nC):
         for idx, c in enumerate(CI):
             if c < 0:
                 CI[idx] = CI_prev[idx] * 0.5
+                print('CI[{}] reaches min'.format(idx))
             elif c > Cs[idx]/fI:
                 CI[idx] = Cs[idx]/fI * 0.99
                 print('CI[{}] reaches max'.format(idx))
+        # set CPAH = CPAA
+        CI[1] = CI[0]
         
-        elif CI[2] > Cs[2]/fI: # if na+ of cl- are over the max range, reduce the concentration of both ions 
-            CI2_old = CI[2]
-            CI[2] = 0.99 * Cs[2]/fI
-            CI[3] = CI[3] - (CI2_old-CI[2])
-        elif CI[3] > Cs[3]/fI:
-            CI3_old = CI[3]
-            CI[3] = 0.99 * Cs[3]/fI
-            CI[2] = CI[2] - (CI3_old-CI[3])
-
         # Update phase II
         fII = 1-fI
         CII = (Cs - fI*CI) / fII
@@ -363,7 +308,8 @@ for i in range(nC):
             print('Values are nan or inf')            
         if step > 1000 and  fracErr <= 0.05: #speed up
             Dt = np.array(Dt0) * 2
-            DtCtot = DtCtot0 * 1.5
+            DtCpair = np.array(DtCpair0) * 2
+#            DtCtot = DtCtot0 * 1.5
         if step > maxIter and step != 1:
             log.write('Over max iteration number\n')
             print('Over max iteration number')
@@ -372,7 +318,6 @@ for i in range(nC):
             log.write('Over max iteration number\n')
             print('Over max iteration number')
             break
-
     log.write(s + '\n')
     log.flush()
     t1 = time.time()
@@ -394,33 +339,9 @@ for i in range(nC):
     s += '{} '.format(dP)
     for a in dmuEff:
             s+= '{} '.format(a)
-    s += '{} {} {} {} {} \n'.format(PI, PII, G, P0, fracErr)        
+    s += '{} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, N) 
     data.write(s)
     data.flush()
-
-    # initialize bulk composition for next point
-    if fI < 0.2 or fI > 0.8:
-        # shift bulk composition if get too close to the boundary
-        fI = 0.6
-        [C1,C2,C5] = fI * CI + (1-fI) * CII
-        # check PAA content and electroneutrality 
-        CPE = C1+C2
-        C1 = fPAA * CPE
-        C2 = CPE-C1
-        shiftBulk = True
-        log.write('\n==Shift bulk composition==\n')
-    else:
-        shiftBulk = False
-        # update C with new Ctot
-        if not 'nan' in s and not 'inf' in s:
-            [C1,C2,C5] = Cs
-        else:
-            shiftBulk = False
-            Ctot_tmp = np.sum(np.array([C1_0,C2_0,C5_0]))
-            Cs_tmp = Ctot_tmp * xs # bring back to initial Ctot
-            [C1,C2,C5] = Cs_tmp
-        C1 += dC
-        C2 += dC
 
     os.chdir(cwd)
 
