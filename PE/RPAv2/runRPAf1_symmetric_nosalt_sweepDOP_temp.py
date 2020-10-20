@@ -18,8 +18,8 @@ from scipy.optimize import least_squares
 import time, copy
 import os
 
-dataFile = 'gibbs_final5.dat'
-logFile = 'log5.txt'
+dataFile = 'gibbs_final1.dat'
+logFile = 'log1.txt'
 gibbsLogFile = 'gibbs.dat'
 Dt0 = [0.005,0.1, 0.2,0.2,0.1,0.1]
 DtCpair0 = [0.1,0.10,0.01]
@@ -145,7 +145,8 @@ for i,N in enumerate(DOPs):
     gibbsLog.write('FI  FII  PI  PII  muI_pair1  muII_pair1  muI_3  muII_3 \n')
     gibbsLog.flush()
     
-    Cs = np.array([C1_0,C2_0,C5_0])
+    if i == 0:
+        Cs = np.array([C1_0,C2_0,C5_0])
     xs = Cs/sum(Cs)
     
     # number of charged molecule types
@@ -342,6 +343,12 @@ for i,N in enumerate(DOPs):
     s += '{} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, N) 
     data.write(s)
     data.flush()
+
+    if fI < 0.2 or fI > 0.8:
+        # shift bulk composition if get too close to the boundary
+        fI = 0.5
+        Cs = fI * CI + (1-fI) * CII
+        log.write('\n==Shifted bulk composition to initiate next run==\n')
 
     os.chdir(cwd)
 
