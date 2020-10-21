@@ -21,9 +21,9 @@ import os
 dataFile = 'gibbs_final1.dat'
 logFile = 'log1.txt'
 gibbsLogFile = 'gibbs.dat'
-Dt0 = [0.005,0.1, 0.2,0.2,0.1]
+Dt0 = [0.01,0.1, 0.2,0.2,0.1]
 DtCpair0 = [0.1,0.10]
-DtCtot0 = 0.005
+DtCtot0 = 0.01
 maxIter = 30000
 program = 'polyFTS'
 jobtype = 'RPA' 
@@ -56,33 +56,27 @@ Ptarget = 285.9924138
 number_species = 4
 
 if fPAA > 0.5 : #counter ion is Na+
-    u0_na =[
+    ion_charge = +1
+    chargedPairs = [[0,1],[0,2]] 
+elif fPAA < 0.5:
+    ion_charge = -1
+    chargedPairs = [[0,1],[1,2]]  
+charges = np.array([-1,1,ion_charge,0], dtype = float)
+#Forcefield
+u0_na =[
 [__B11__,__B13__,__B16__,__B15__],
 [__B13__,__B33__,__B36__,__B35__],
 [__B16__,__B36__,__B66__,__B56__],
 [__B15__,__B35__,__B56__,__B55__]]
-
-    abead_na = [__a1__,__a3__,__a6__,__a5__]
-    lB = __lB__
-    b_na = [__b1__,__b3__,__b6__,__b5__]
-
-    ion_charge = +1
-    chargedPairs = [[0,1],[0,2]] 
-elif fPAA < 0.5:
-    u0_cl =[
+u0_cl =[
 [__B11__,__B13__,__B17__,__B15__],
 [__B13__,__B33__,__B37__,__B35__],
 [__B17__,__B37__,__B77__,__B57__],
 [__B15__,__B35__,__B57__,__B55__]]
+abead = [__a1__,__a3__,__a7__,__a5__]
+lB = __lB__
+b = [__b1__,__b3__,__b7__,__b5__]
 
-    abead_cl = [__a1__,__a3__,__a7__,__a5__]
-    lB = __lB__
-    b_cl = [__b1__,__b3__,__b7__,__b5__]  
-
-    ion_charge = -1
-    chargedPairs = [[0,1],[1,2]]  
-
-charges = np.array([-1,1,ion_charge,0], dtype = float) 
 number_molecules = 4
 PAADOP = 24
 PAHDOP = 24
@@ -103,10 +97,10 @@ RPA.Setstruc(struc)
 RPA.Setchain(chain)
 #RPA.SetDOP(DOP)
 RPA.Setcharge(charges)
-RPA.Setabead(abead_na)
+RPA.Setabead(abead)
 RPA.Setu0(u0_na)
 RPA.SetlB(lB)
-RPA.Setb(b_na)
+RPA.Setb(b)
 RPA.SetV(V)
 RPA.Setkmin(kmin)
 RPA.Setkmax(kmax)
@@ -182,15 +176,11 @@ for i in range(nfPAA):
     if fPAA > 0.5:
         ion_charge = +1
         chargedPairs = [[0,1],[0,2]]
-        abead = abead_na
         u0 = u0_na
-        b = b_na
     if fPAA < 0.5:
         ion_charge = -1
         chargedPairs = [[0,1],[1,2]]
-        abead = abead_cl
         u0 = u0_cl
-        b = b_cl
     charges = np.array([-1,1,ion_charge,0], dtype = float)
     molCharges = np.array([-1,1,ion_charge,0], dtype = float) # charge per segment length of each molecule type
 
