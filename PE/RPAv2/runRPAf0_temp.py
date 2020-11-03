@@ -21,8 +21,8 @@ import os
 dataFile = 'gibbs_final1.dat'
 logFile = 'log1.txt'
 gibbsLogFile = 'gibbs.dat'
-Dt0 = [0.001,0.1, 0.2,0.2,0.1,0.01]
-DtCpair0 = [0.01,0.010,0.001]
+Dt0 = [0.01,0.1, 0.2,0.2,0.1,0.1]
+DtCpair0 = [0.1,0.1,0.01]
 DtCtot0 = 0.002
 maxIter = 30000
 program = 'polyFTS'
