@@ -207,6 +207,12 @@ for i in range(nC):
             else: #otherwise, initiate from the initial guess
                 CI0 = [C1I0, C2I0, C5]
                 fI = fI0
+    # make sure initial guess is not out od range
+    for idx, c in enumerate(CI0):
+        if c < 0:
+            CI0[idx] = CI[idx] * 0.5
+        elif c > Cs[idx]/fI:
+            CI0[idx] = Cs[idx]/fI * 0.99
 
     Ctot = sum(Cs)
     CI = np.array(CI0)        

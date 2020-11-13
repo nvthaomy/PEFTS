@@ -24,7 +24,6 @@ import time
 # C1 and v1 are initial guesses of the binodal concentration
 # and partition volume fraction for phase 1.
 
-FTSpath='/home/mnguyen/bin/PolyFTS_feature-linkers_Oct2020/bin/Release/PolyFTSPLL.x'
 #data_scft = np.loadtxt('pmatchSCFT.dat')
 v1 = 1.
 #species: 1 A-, 2 B+, 3 Na+, 4 Cl-, 5 HOH
@@ -37,6 +36,9 @@ C1 = float(sys.argv[5])
 Ptarget = float(sys.argv[6])
 includeIdealTerm = str(sys.argv[7])
 template = str(sys.argv[8])
+ntsteps=int(sys.argv[9])
+numBlocks=int(sys.argv[10])
+fts = str(sys.argv[11])
 
 x5 = 1.0 - (x1+x2+x3+x4)
 xs = [x1,x2,x3,x4,x5]
@@ -49,8 +51,6 @@ xs = [x1,x2,x3,x4,x5]
 # Gibbs partition time stepping parameters.
 dtC=0.2
 dtv=0.001
-ntsteps=int(sys.argv[9]) 
-numBlocks=int(sys.argv[10])
 
 # Prepare output files
 GibbsFile = open("pmatchCL.dat","w")
@@ -83,7 +83,7 @@ for t in range(ntsteps):
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
-    call('{} run.in > run.out'.format(FTSpath), shell=True)
+    call('{} run.in > run.out'.format(fts), shell=True)
 
     # Data analysis:
 
@@ -266,7 +266,7 @@ if ntsteps>1:
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
-    call('{} run.in > run.out'.format(FTSpath), shell=True)
+    call('{} run.in > run.out'.format(fts), shell=True)
     print('Final average C: {}'.format(Cavg))
     print('... cumulative runtime: {}'.format(time.time()-timestart))
     print(' === Final Run Done === ')
