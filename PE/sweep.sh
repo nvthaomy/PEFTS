@@ -1,22 +1,22 @@
 #!/bin/bash
-
-jobNames=xA-0.009_xB+0.009_xNa0.02_xCl0.02_C32.7_FTS
+FTSpath="'/home/mnguyen/bin/PolyFTS_feature-linkers_Oct2020/bin/Release/PolyFTSGPU.x'"
+jobNames=(FTS_11wtpercentPE_0.3MNaCl_L9nm)
 Ext=
-dirs=xA-0.009_xB+0.009_xNa0.02_xCl0.02_C32.7
-x1s=(0.009395)
-x2s=(0.009395)
-x3s=(0.020877)
-x4s=(0.020877)
+dirs=(11wtpercentPE_0.3MNaCl_L9nm)
+x1s=(0.017608217)
+x2s=(0.017608217)
+x3s=(0.023844461)
+x4s=(0.023844461)
 length=${#x1s[@]}
 ffFile=PE_ff.dat
 templateIn=template0_PE.in
 templateOut=template_PE.in
-PAADOP=3
-PAHDOP=3
+PAADOP=24
+PAHDOP=24
 C1=32.72680945
 P=285.9924138
 includeideal=true
-ntsteps=1
+ntsteps=30
 numBlocks=1000
 numThreads=6
 python srel2fts.py $ffFile $templateIn $templateOut $PAADOP $PAHDOP
@@ -29,7 +29,7 @@ for ((i=0;i<$length;i++)); do
     x4=${x4s[$i]}
     mkdir $mydir
     echo === xPAA = $x1  ===
-    cp run.template $mydir/run.sh
+    cp  run_podgpu.template $mydir/run.sh
     cp $templateOut $mydir/
     sed -i "s/__jobName__/$Ext${mydir}/g" $mydir/run.sh
     sed -i "s/__x1__/${x1}/g" $mydir/run.sh
@@ -43,6 +43,7 @@ for ((i=0;i<$length;i++)); do
     sed -i "s/__ntsteps__/${ntsteps}/g" $mydir/run.sh
     sed -i "s/__numBlocks__/${numBlocks}/g" $mydir/run.sh
     sed -i "s/__numThreads__/${numThreads}/g" $mydir/run.sh
+    sed -i "s#__FTSpath__#${FTSpath}#g" $mydir/run.sh
     cd $mydir
     qsub run.sh
     cd ..

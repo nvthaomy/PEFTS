@@ -15,6 +15,6 @@ export PATH="/home/mnguyen/anaconda3/envs/py2/bin/:$PATH"
 export PATH="/home/mnguyen/miniconda3/envs/py2/bin/:$PATH"
 export PYTHONPATH=/home/mnguyen/bin/scripts/:$PYTHONPATH
 
-python ../pmatch_CL_molality.py __x1__ __x2__ __x3__ __x4__ __C1__ __P__ __includeideal__ __template__ __ntsteps__ __numBlocks__
+python ../pmatch_CL_molality.py __x1__ __x2__ __x3__ __x4__ __C1__ __P__ __includeideal__ __template__ __ntsteps__ __numBlocks__ __fts__
 
 

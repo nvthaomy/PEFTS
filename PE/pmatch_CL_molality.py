@@ -24,6 +24,7 @@ import time
 # C1 and v1 are initial guesses of the binodal concentration
 # and partition volume fraction for phase 1.
 
+FTSpath='/home/mnguyen/bin/PolyFTS_feature-linkers_Oct2020/bin/Release/PolyFTSPLL.x'
 #data_scft = np.loadtxt('pmatchSCFT.dat')
 v1 = 1.
 #species: 1 A-, 2 B+, 3 Na+, 4 Cl-, 5 HOH
@@ -82,8 +83,7 @@ for t in range(ntsteps):
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
-    #call(["PolyFTSGPU.x","run.in"])
-    call('/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
+    call('{} run.in > run.out'.format(FTSpath), shell=True)
 
     # Data analysis:
 
@@ -266,8 +266,7 @@ if ntsteps>1:
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
-#    call(["/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x","run.in"])
-    call('/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
+    call('{} run.in > run.out'.format(FTSpath), shell=True)
     print('Final average C: {}'.format(Cavg))
     print('... cumulative runtime: {}'.format(time.time()-timestart))
     print(' === Final Run Done === ')
