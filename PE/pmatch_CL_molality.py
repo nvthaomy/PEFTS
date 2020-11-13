@@ -36,6 +36,9 @@ C1 = float(sys.argv[5])
 Ptarget = float(sys.argv[6])
 includeIdealTerm = str(sys.argv[7])
 template = str(sys.argv[8])
+ntsteps=int(sys.argv[9])
+numBlocks=int(sys.argv[10])
+fts = str(sys.argv[11])
 
 x5 = 1.0 - (x1+x2+x3+x4)
 xs = [x1,x2,x3,x4,x5]
@@ -48,8 +51,6 @@ xs = [x1,x2,x3,x4,x5]
 # Gibbs partition time stepping parameters.
 dtC=0.2
 dtv=0.001
-ntsteps=int(sys.argv[9]) 
-numBlocks=int(sys.argv[10])
 
 # Prepare output files
 GibbsFile = open("pmatchCL.dat","w")
@@ -82,8 +83,7 @@ for t in range(ntsteps):
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
-    #call(["PolyFTSGPU.x","run.in"])
-    call('/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
+    call('{} run.in > run.out'.format(fts), shell=True)
 
     # Data analysis:
 
@@ -266,8 +266,7 @@ if ntsteps>1:
         runfile = open("run.in","w")
         runfile.write(ini)
         runfile.close()
-#    call(["/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x","run.in"])
-    call('/home/mnguyen/bin/PolyFTS20200605/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
+    call('{} run.in > run.out'.format(fts), shell=True)
     print('Final average C: {}'.format(Cavg))
     print('... cumulative runtime: {}'.format(time.time()-timestart))
     print(' === Final Run Done === ')
