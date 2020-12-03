@@ -1,0 +1,22 @@
+PAADOP=150
+PAHDOP=150
+subfolder=N150
+tempIn=runRPAf1_temp.py
+tempOut=runRPAf1.py
+Py='/home/mnguyen/rpa/atactic/xp0.1_10AA24f1_10AH24f1_325nacl_12500hoh_1_atacticV2_11/setup.py'
+inidatfile='/home/mnguyen/rpa/atactic/xp0.1_10AA24f1_10AH24f1_325nacl_12500hoh_1_atacticV2_11/N150/sweep/gibbs_test.dat' #final1.dat'
+maindir=$PWD
+
+#1. sweep fPAA
+python ~/bin/PEFTS/PE/srel2fts.py PE_ff.dat runRPAf1_sweepfPAA_temp.py $subfolder/sweep/runRPAf1_sweepfPAA.py $PAADOP $PAHDOP
+cd $subfolder/sweep/
+python runRPAf1_sweepfPAA.py
+cd $maindir
+
+#2. add forcefield in runRPAf1_temp.py
+python ~/bin/PEFTS/PE/srel2fts.py PE_ff.dat $tempIn ${subfolder}/$tempOut $PAADOP $PAHDOP 
+
+#3. add initial guess, make folder and submit jobs for different fPAA values
+cd $subfolder
+python $Py $tempOut $inidatfile
+ 

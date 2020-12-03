@@ -35,23 +35,22 @@ IncludeEvRPA = False
 chain = 'DGC'
 
 # Composition
-dC3 = 0.1
-nC = 100
+dC3 = __dC3__
+nC = __nC__
 
-fPAA = 0.5
-C1_0 =  0.0844367107709645
+fPAA = __fPAA__
+C1_0 = __C1__
 C2_0 = (1-fPAA)*C1_0/fPAA
-Csalt = 11.601942707030037-C1_0
-C5_0 = 6.618320679339323
-C3_0 = Csalt + C1_0
-C4_0 = Csalt + C2_0
+C3_0 = __C3__
+C4_0 = __C4__
+C5_0 = __C5__
 
-C1I0 = 1.1273397252566825e-06
-C2I0 =  8.249102541619244e-06
-C3I0 = 11.756010539263837
-C4I0 = 11.756017661026654
-C5I0 = 6.911558007745928
-fI0  = 0.30877815178155593
+C1I0 = __C1I__
+C2I0 = __C2I__
+C3I0 = __C3I__
+C4I0 = __C4I__
+C5I0 = __C5I__
+fI0  = __fI__
 
 ensemble = 'NPT'
 Ptarget = 285.9924138 
@@ -62,8 +61,8 @@ charges = np.array([-1,1,1,-1,0], dtype = float) # A-, A, B+, B, Na+, Cl-, HOH
 
 number_molecules = 5
 chargedPairs = [[0,2],[1,3],[2,3]]       # only include pairs
-PAADOP = 150
-PAHDOP = 150
+PAADOP = __PAADOP__
+PAHDOP = __PAHDOP__
 struc = [[0]*PAADOP,[1]*PAHDOP,[2],[3],[4]]
 molCharges = np.array([-1,1,1,-1,0], dtype = float) # charge per segment length of each molecule type
 
