@@ -9,7 +9,7 @@ import sys
 sys.path.append('/home/mnguyen/bin/scripts')
 sys.path.append('/home/mnguyen/bin/RPA/')
 sys.path.append('/Users/nvthaomy/Desktop/rpa/RPA/')
-import GibbsRPA as Gibbs
+# import GibbsRPA as Gibbs
 #import GibbsRPA_Ele_LSQ as Gibbs
 from scipy.optimize import root
 import numpy as np
@@ -35,16 +35,40 @@ IncludeEvRPA = False
 chain = 'DGC'
 
 # Composition
-DOPs = [12, 10, 8, 6, 4]
-nC = len(DOPs)
-C1_0 = 0.40243571071789197 
-C5_0 = 31.618840528160554
+PAANns_tmp = np.arange(6,41,1)
+PAHNns_tmp = np.arange(6,41,1)
+PAANns=[]
+PAHNns=[]
+PAADs=[]
+PAHDs=[]
+for i,N1 in enumerate(PAANns_tmp):
+    if i%2 == 0:
+        for j,N2 in enumerate(PAHNns_tmp):
+            PAANns.append(N1)
+            PAHNns.append(N2)
+            PAADs.append(1.)
+            PAHDs.append(1.)
+    else:
+        for j,N2 in enumerate(np.flip(PAHNns_tmp)):
+            PAANns.append(N1)
+            PAHNns.append(N2)
+            PAADs.append(1.)
+            PAHDs.append(1.)
+PAANns = np.array(PAANns)
+PAHNns = np.array(PAHNns)
+PAADs = np.array(PAADs)
+PAHDs = np.array(PAHDs)
+
+nC = len(PAANns)
+
+C1_0 = 0.2409450715265660
+C5_0 = 32.357800728408876
 C2_0 = C1_0
 
-C1I0 = 2.3298113013680016e-26 
-C2I0 = 2.3298113013680016e-26 
-C5I0 = 33.50461482323487 
-fI0  = 0.7000161472
+C1I0 = 1.0937406212193056e-06
+C2I0 = 1.0937406212193056e-06
+C5I0 = 33.50460979615103
+fI0  = 0.04410610675564892
 
 ensemble = 'NPT'
 Ptarget = 285.9924138 
@@ -95,7 +119,7 @@ gme_list = None
 gm_list = None
 
 data = open(dataFile,'w')
-data.write('# CPAA CPAH CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 dP dmuPAAPAH dmuW PI PII relDeltaG calculated_P_bulk fracErr DOP\n')
+data.write('# CPAA CPAH CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 dP dmuPAAPAH dmuW PI PII relDeltaG calculated_P_bulk fracErr N_PAA N_PAH\n')
 data.flush()
 
 log = open(logFile,'w')
@@ -103,41 +127,14 @@ log.flush()
 
 cwd = os.getcwd()
 
-    
-def BaroStat(xs, Ptarget, Ctot, RPA, dtC=0.2, maxIter = 1000 ,tol = 1.e-6):
-        import math 
-        '''
-        RPA class with defined interactionsn
-        dtC: step size
-        maxIter: max iteration step'''
-        
-        C1 = Ctot
-        #self.Write2Log('==Barostat at P {}==\n'.format(Ptarget))
-        #self.Write2Log('# step C P Err\n')
-        err = 10.
-        step = 1
-        while err>tol:        
-            P1 = RPA.P()
-            err = np.abs(P1-Ptarget)/np.abs(Ptarget)
-            #self.Write2Log('{} {} {} {}\n'.format(step,C1,P1,err))
-            C1 = C1 * ( 1. + dtC*(math.sqrt(Ptarget/P1) - 1.) )
-            RPA.SetCm(xs*C1)
-            RPA.Initialize()
-            if err <= tol:
-                #print('error is below tolerance {}\n'.format(tol))
-                break
-            else:
-                step += 1
-        return C1
-
-for i,N in enumerate(DOPs):
+for i in range(nC):
     try:
-        os.mkdir('N{}'.format(round(N,5)))
+        os.mkdir('PAA{}_PAH{}'.format(PAANns[i],PAHNns[i]))
     except:
         pass
-    os.chdir('N{}'.format(round(N,5)))
-    print('==N {}=='.format(round(N,5)))
-    log.write('==N {}=='.format(round(N,5)))
+    os.chdir('PAA{}_PAH{}'.format(PAANns[i],PAHNns[i]))
+    print('==PAA{}_PAH{}=='.format(PAANns[i],PAHNns[i]))
+    log.write('==PAA{}_PAH{}=='.format(PAANns[i],PAHNns[i]))
     log.flush()
     
     gibbsLog = open(gibbsLogFile,'w')
@@ -153,7 +150,7 @@ for i,N in enumerate(DOPs):
     nCharged = len([c for c in molCharges if np.abs(c) != 0])
     nNeutral = number_molecules - nCharged
     
-    struc = [[0]*N,[1]*N,[2]] 
+    struc = [[0]*PAANns[i],[1]*PAHNns[i],[2]] 
     RPA.Setstruc(struc) 
     DOP = RPA.DOP
     RPA1 = copy.deepcopy(RPA) 
@@ -168,7 +165,7 @@ for i,N in enumerate(DOPs):
     else:
         CI0 = CI.copy()
         fI = fI
-    # make sure initial guess is not out od range
+    # make sure initial guess is not out of range
     for idx, c in enumerate(CI0):
         if c < 0:
             CI0[idx] = CI[idx] * 0.5
@@ -188,6 +185,7 @@ for i,N in enumerate(DOPs):
     step = 0
     log.write('\n=step\tFracErr\tdeltaG\tCtot\tP0\tdP\tdMus=\n')
     fracErr = 10
+    fracErr_prev=100
     while fracErr > GibbsTolerance:
         step += 1
         dVals = []
@@ -305,8 +303,13 @@ for i,N in enumerate(DOPs):
         gme_list = RPA1.gme_list
         
         if 'nan' in s or 'inf' in s:
+            print('Values are nan or inf')
             break
-            print('Values are nan or inf')            
+        elif np.abs(fracErr-fracErr_prev)/np.abs(fracErr) <1e-5:
+                print('Stalled')
+        else:
+            fracErr_prev = fracErr
+            
         if step > 1000 and  fracErr <= 0.05: #speed up
             Dt = np.array(Dt0) * 2
             DtCpair = np.array(DtCpair0) * 2
@@ -319,6 +322,7 @@ for i,N in enumerate(DOPs):
             log.write('Over max iteration number\n')
             print('Over max iteration number')
             break
+        
     log.write(s + '\n')
     log.flush()
     t1 = time.time()
@@ -340,17 +344,15 @@ for i,N in enumerate(DOPs):
     s += '{} '.format(dP)
     for a in dmuEff:
             s+= '{} '.format(a)
-    s += '{} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, N) 
+    s += '{} {} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, PAANns[i], PAHNns[i]) 
     data.write(s)
     data.flush()
 
-    if fI < 0.2 or fI > 0.8:
+    if fI < 0.4 or fI > 0.6:
         # shift bulk composition if get too close to the boundary
         fI = 0.5
         Cs = fI * CI + (1-fI) * CII
         log.write('\n==Shifted bulk composition to initiate next run==\n')
 
     os.chdir(cwd)
-
-
 

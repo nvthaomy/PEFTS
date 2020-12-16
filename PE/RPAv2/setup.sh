@@ -3,10 +3,12 @@ PAHDOP=150
 subfolder=N150
 tempIn=runRPAf1_temp.py
 tempOut=runRPAf1.py
-Py='/home/mnguyen/rpa/atactic/xp0.1_10AA24f1_10AH24f1_325nacl_12500hoh_1_atacticV2_11/setup.py'
-inidatfile='/home/mnguyen/rpa/atactic/xp0.1_10AA24f1_10AH24f1_325nacl_12500hoh_1_atacticV2_11/N150/sweep/gibbs_test.dat' #final1.dat'
+Py='/home/mnguyen/bin/PEFTS/PE/RPAv2/setup.py'
+inidatfile=/home/mnguyen/rpa/atactic/xp0.1_10AA24f1_10AH24f1_325nacl_12500hoh_1_atacticV2_10/2.RgCon_Coef1e2/$subfolder/sweep/gibbs_final1.dat
 maindir=$PWD
 
+mkdir $subfolder
+mkdir $subfolder/sweep
 #1. sweep fPAA
 python ~/bin/PEFTS/PE/srel2fts.py PE_ff.dat runRPAf1_sweepfPAA_temp.py $subfolder/sweep/runRPAf1_sweepfPAA.py $PAADOP $PAHDOP
 cd $subfolder/sweep/

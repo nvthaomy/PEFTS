@@ -42,19 +42,19 @@ fPAA1s.sort(reverse=True)
 fPAA2s.sort()
 nC = len(fPAA1s)+len(fPAA2s)+1
 
-C1_0 = 1.0298193844072756
+C1_0 = 0.37913963665783956
 C2_0 = (1-fPAA0)*C1_0/fPAA0
-Csalt =0.7285243833810433-C1_0
-C5_0 = 26.6757987
+Csalt =1.1732932595734518-C1_0
+C5_0 = 29.78849877788431
 C3_0 = Csalt + C1_0
 C4_0 = Csalt + C2_0
 
-C1I0 =1.6090020000241253e-158
-C2I0 =7.119065062999288e-273
-C3I0 = 1.663073240313724
-C4I0 = 1.663073240313724
-C5I0 = 30.76317191274095
-fI0  = 0.38893379876586104
+C1I0 = 2.5412174921998942e-169
+C2I0 = 6.008433511411713e-206
+C3I0 = 1.2575917795706386
+C4I0 = 1.2575917795706386
+C5I0 = 31.45876353026803
+fI0  = 0.5793134448275097
 
 ensemble = 'NPT'
 Ptarget = 285.9924138 
@@ -217,6 +217,7 @@ for i in range(nC):
     DtCtot = DtCtot0 
     
     NAN = True
+    fracErr_prev=100
     while NAN:
         xs = Cs/sum(Cs)
         # make sure initial guess is not out od range
@@ -401,6 +402,10 @@ for i in range(nC):
                 print('Values are nan or inf')
                 NAN=True
                 break
+            elif np.abs(fracErr-fracErr_prev)/np.abs(fracErr) <1e-5:
+                print('Stalled')
+                NAN=True
+                break
             elif fracErr <= GibbsTolerance:
                 NAN=False
                 
@@ -416,7 +421,7 @@ for i in range(nC):
                 log.write('Over max iteration number\n')
                 print('Over max iteration number')
                 break
-            
+            fracErr_prev = fracErr 
     
         log.write(s + '\n')
         log.flush()

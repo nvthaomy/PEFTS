@@ -154,7 +154,7 @@ shiftBulk = False
 
 fPAA = C1_0/(C1_0+C2_0)
 C3 = C3_0
-   
+End=False   
 for i in range(nC):
     try:
         os.mkdir('CNaCl{}'.format(round(C3,5)))
@@ -238,6 +238,7 @@ for i in range(nC):
     step = 0
     log.write('\n=step\tFracErr\tdeltaG\tCtot\tP0\tdP\tdMus=\n')
     fracErr = 10
+    fracErr_prev=100
     while fracErr > GibbsTolerance:
         step += 1
         dVals = []
@@ -403,6 +404,11 @@ for i in range(nC):
         if 'nan' in s or 'inf' in s:
             break
             print('Values are nan or inf')            
+        elif np.abs(fracErr-fracErr_prev)/np.abs(fracErr) <1e-5:
+            End=True
+            print('Stalled')
+            break
+
         if step > 1000 and  fracErr <= 0.05: #speed up
             Dt = np.array(Dt0) * 2
             DtCpair = np.array(DtCpair0) * 2
@@ -486,8 +492,10 @@ for i in range(nC):
             [C1,C2,C3,C4,C5] = Cs_tmp
         C3 += dC3
         C4 += dC3
-        if C3<0. or C4<0.:
+        if C3<0. or C4<0. or np.abs(np.sum(CI[:2])-np.sum(CII[:2]))/np.sum(CII[:2]) <= 1e-5 or End:
             break
+    if End:
+        break
     os.chdir(cwd)
 
 
