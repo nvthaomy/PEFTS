@@ -33,38 +33,47 @@ QNewton = False
 UseAdaptiveDtC = False
 IncludeEvRPA = False
 chain = 'DGC'
-
-# Composition
-dC3 = 0.1
-nC = 100
-
-C1_0 =  0.0844367107709645
-C2_0 = 0.1266565074986811
-Csalt = 11.601942707030037-C1_0
-C5_0 = 6.618320679339323
-C3_0 = Csalt + C1_0
-C4_0 = Csalt + C2_0
-
-C1I0 = 1.1273397252566825e-06
-C2I0 =  8.249102541619244e-06
-C3I0 = 11.756010539263837
-C4I0 = 11.756017661026654
-C5I0 = 6.911558007745928
-fI0  = 0.30877815178155593
-
-ensemble = 'NPT'
-Ptarget = 285.9924138 
+log = open(logFile,'w')
+log.flush()
 
 # Molecules
+PAAstruc=([1]+74*[0])*2
+PAHstruc=[3,3,2,3,2]*30
+
 number_species = 7
 charges = np.array([-1,0,1,0,1,-1,0], dtype = float) # A-, A, B+, B, Na+, Cl-, HOH
 
 number_molecules = 5
 chargedPairs = [[0,2],[1,3],[2,3]]       # only include pairs
-#PAADOP = 20
-#PAHDOP = 20
-struc = [[0,1]*10,[2,3]*10,[4],[5],[6]]
-molCharges = [-0.5,0.5,1,-1,0] # charge per segment length of each molecule type
+struc = [PAAstruc,PAHstruc,[4],[5],[6]]
+PAAcharge = (PAAstruc.count(0)*charges[0] + PAAstruc.count(1)*charges[1])/len(PAAstruc)
+PAHcharge = (PAHstruc.count(2)*charges[2] + PAHstruc.count(3)*charges[3])/len(PAHstruc)
+molCharges = np.array([PAAcharge,PAHcharge,1,-1,0], dtype = float) # charge per segment length of each molecule type
+
+log.write('PAA charge/mon {}, PAH charge/mon {}\n'.format(PAAcharge,PAHcharge))
+log.write('PAA DOP {}, PAH DOP {}\n'.format(len(PAAstruc),len(PAHstruc)))
+log.flush()
+
+# Composition
+dC3 = __dC3__
+nC = __nC__
+
+fPAA = __fPAA__
+C1_0 = __C1__
+C2_0 = (1-fPAA)*C1_0/fPAA
+C3_0 = __C3__
+C4_0 = __C4__
+C5_0 = __C5__
+
+C1I0 = __C1I__
+C2I0 = __C2I__
+C3I0 = __C3I__
+C4I0 = __C4I__
+C5I0 = __C5I__
+fI0  = __fI__
+
+ensemble = 'NPT'
+Ptarget = 285.9924138 
 
 # Forcefield
 u0 =[
@@ -92,7 +101,6 @@ import RPA_v2 as RPAModule
 RPA = RPAModule.RPA(number_species,number_molecules)
 RPA.Setstruc(struc)
 RPA.Setchain(chain)
-#RPA.SetDOP(DOP)
 RPA.Setcharge(charges)
 RPA.Setabead(abead)
 RPA.Setu0(u0)
@@ -114,38 +122,8 @@ data = open(dataFile,'w')
 data.write('# CPAA CPAH CNa CCl CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 CI4 CII4 CI5 CII5  dP dmuPAANa dmuPAHCl dmuNaCl dmuW PI PII relDeltaG calculated_P_bulk fracErr C3\n')
 data.flush()
 
-log = open(logFile,'w')
-log.flush()
-
 cwd = os.getcwd()
 
-    
-def BaroStat(xs, Ptarget, Ctot, RPA, dtC=0.2, maxIter = 1000 ,tol = 1.e-6):
-        import math 
-        '''
-        RPA class with defined interactionsn
-        dtC: step size
-        maxIter: max iteration step'''
-        
-        C1 = Ctot
-        #self.Write2Log('==Barostat at P {}==\n'.format(Ptarget))
-        #self.Write2Log('# step C P Err\n')
-        err = 10.
-        step = 1
-        while err>tol:        
-            P1 = RPA.P()
-            err = np.abs(P1-Ptarget)/np.abs(Ptarget)
-            #self.Write2Log('{} {} {} {}\n'.format(step,C1,P1,err))
-            C1 = C1 * ( 1. + dtC*(math.sqrt(Ptarget/P1) - 1.) )
-            RPA.SetCm(xs*C1)
-            RPA.Initialize()
-            if err <= tol:
-                #print('error is below tolerance {}\n'.format(tol))
-                break
-            else:
-                step += 1
-        return C1
-    
 # CI0 values to estimate slope and initialize guess for next run by linear extrapolation
 CI_1 = []
 CI_2 = []
@@ -157,6 +135,7 @@ shiftBulk = False
 
 fPAA = C1_0/(C1_0+C2_0)
 C3 = C3_0
+End=False   
 for i in range(nC):
     try:
         os.mkdir('CNaCl{}'.format(round(C3,5)))
@@ -165,7 +144,7 @@ for i in range(nC):
     os.chdir('CNaCl{}'.format(round(C3,5)))
     print('==CNaCl {}=='.format(round(C3,5)))
     log.write('==CNaCl {}=='.format(round(C3,5)))
-    log.flush()    
+    log.flush()
     
     gibbsLog = open(gibbsLogFile,'w')
     gibbsLog.write('# step  fI  fII  CI_1  CII_1  CI_2  CII_2  CI_3  CII_3  CI_4  CII_4  CI_5  CII_5  ')
@@ -220,6 +199,7 @@ for i in range(nC):
             else: #otherwise, initiate from the initial guess
                 CI0 = [C1I0, C2I0, C3, C4, C5]
                 fI = fI0
+
     # make sure initial guess is not out od range
     for idx, c in enumerate(CI0):
         if c < 0:
@@ -230,14 +210,17 @@ for i in range(nC):
     Ctot = sum(Cs)
     CI = np.array(CI0)        
     fII  = 1.-fI
-    CII = (Cs-CI*fI)/fII
+    if not shiftBulk: # if not shift bulk, use this formula, otherwise use previous concentration for phase 2
+        CII = (Cs-CI*fI)/fII
     Dt = Dt0
     DtCpair = DtCpair0
     DtCtot = DtCtot0 
+
     t0 = time.time()
     step = 0
     log.write('\n=step\tFracErr\tdeltaG\tCtot\tP0\tdP\tdMus=\n')
     fracErr = 10
+    fracErr_prev=100
     while fracErr > GibbsTolerance:
         step += 1
         dVals = []
@@ -309,7 +292,7 @@ for i in range(nC):
         s = '{} {} {} {} {} {} '.format(step,fracErr, G, Ctot, P0, dP)
         for a in dmuEff:
             s+= '{} '.format(a)        
-        if step % 100 == 0:
+        if step % 200 == 0:
             log.write(s + '\n')
             log.flush()
         
@@ -341,9 +324,7 @@ for i in range(nC):
         elif dt < dtmin:
             dt = 0.8 * dtmin 
         CI[0] = CI[0] + dt
-        #CI[0] = CI[0] - DtCpair[0] * np.min([CI[0], CII[0]])/5. * dmuEff[0] 
         # PAH
-        #dt = - DtCpair[1] * dmuEff[1]
         dt = - DtCpair[1] *  np.min([CI[1], CII[1]]) * dmuEff[1]
         dtmin = - CI[1]
         dtmax = Cs[1]/fI - CI[1]
@@ -352,7 +333,6 @@ for i in range(nC):
         elif dt < dtmin:
             dt = 0.8 * dtmin   
         CI[1] = CI[1] + dt
-        #CI[1] = CI[1] - DtCpair[1] * np.min([CI[1], CII[1]])/5. * dmuEff[1]
         # HOH
         CI[4] = CI[4] - Dt[-1] * np.min([CI[4], CII[4]])/5. * dmuEff[3]
         
@@ -406,10 +386,15 @@ for i in range(nC):
         if 'nan' in s or 'inf' in s:
             break
             print('Values are nan or inf')            
+        elif np.abs(fracErr-fracErr_prev)/np.abs(fracErr) <1e-5:
+            End=True
+            print('Stalled')
+            break
+
         if step > 1000 and  fracErr <= 0.05: #speed up
-            Dt = np.array(Dt0) * 2.
-            DtCpair = np.array(DtCpair0) * 2.
-            DtCtot = DtCtot0 * 2.
+            Dt = np.array(Dt0) * 2
+            DtCpair = np.array(DtCpair0) * 2
+#            DtCtot = DtCtot0 * 1.5
         if step > maxIter and step != 1:
             log.write('Over max iteration number\n')
             print('Over max iteration number')
@@ -418,6 +403,7 @@ for i in range(nC):
             log.write('Over max iteration number\n')
             print('Over max iteration number')
             break
+
         if fracErr <= GibbsTolerance:
             if len(CI_1) == 0:
                 CI_1 = np.array(CI)
@@ -434,7 +420,6 @@ for i in range(nC):
                 CI_2 = np.array(CI)
                 C3_2 = C3
                 fI_2 = fI
-
     log.write(s + '\n')
     log.flush()
     t1 = time.time()
@@ -456,22 +441,22 @@ for i in range(nC):
     s += '{} '.format(dP)
     for a in dmuEff:
             s+= '{} '.format(a)
-    s += '{} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, C3)
+    s += '{} {} {} {} {} {}\n'.format(PI, PII, G, P0, fracErr, C3)        
     data.write(s)
     data.flush()
 
     # initialize bulk composition for next point
-    if fI < 0.1 or fI > 0.9:
+    if fI < 0.3 or fI > 0.7:
         # shift bulk composition if get too close to the boundary
-        fI = 0.6
+        fI = 0.5
         [C1,C2,C3,C4,C5] = fI * CI + (1-fI) * CII
         # check PAA content and electroneutrality 
         CPE = C1+C2
-        Csalt = C3-C1
+        Csalt = C3-C1*np.abs(PAAcharge)
         C1 = fPAA * CPE
         C2 = CPE-C1
-        C3 = C1 + Csalt
-        C4 = C2 + Csalt
+        C3 = C1*np.abs(PAAcharge) + Csalt
+        C4 = C2*np.abs(PAHcharge) + Csalt
 
         shiftBulk = True
         CI_1 = []
@@ -489,8 +474,10 @@ for i in range(nC):
             [C1,C2,C3,C4,C5] = Cs_tmp
         C3 += dC3
         C4 += dC3
-        if C3<0. or C4<0.:
+        if C3<0. or C4<0. or np.abs(np.sum(CI[:2])-np.sum(CII[:2]))/np.sum(CII[:2]) <= 1e-5 or End:
             break
+    if End:
+        break
     os.chdir(cwd)
 
 

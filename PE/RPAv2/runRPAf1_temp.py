@@ -33,6 +33,28 @@ QNewton = False
 UseAdaptiveDtC = False
 IncludeEvRPA = False
 chain = 'DGC'
+log = open(logFile,'w')
+log.flush()
+
+# Molecules
+number_species = 5
+charges = np.array([-1,1,1,-1,0], dtype = float) # A-, A, B+, B, Na+, Cl-, HOH
+
+number_molecules = 5
+chargedPairs = [[0,2],[1,3],[2,3]]       # only include pairs
+PAADOP = __PAADOP__
+PAHDOP = __PAHDOP__
+PAAstruc=[0]*PAADOP
+PAHstruc=[1]*PAHDOP
+PAAcharge = PAAstruc.count(0)*charges[0]/len(PAAstruc)
+PAHcharge = PAHstruc.count(1)*charges[1]/len(PAHstruc)
+
+struc = [PAAstruc,PAHstruc,[2],[3],[4]]
+molCharges = np.array([PAAcharge,PAHcharge,charges[2],charges[3],charges[4]], dtype = float) # charge per segment length of each molecule type
+
+log.write('PAA charge/mon {}, PAH charge/mon {}\n'.format(PAAcharge,PAHcharge))
+log.write('PAA DOP {}, PAH DOP {}\n'.format(len(PAAstruc),len(PAHstruc)))
+log.flush()
 
 # Composition
 dC3 = __dC3__
@@ -55,16 +77,16 @@ fI0  = __fI__
 ensemble = 'NPT'
 Ptarget = 285.9924138 
 
-# Molecules
-number_species = 5
-charges = np.array([-1,1,1,-1,0], dtype = float) # A-, A, B+, B, Na+, Cl-, HOH
+# check neutrality
+totcharge = molCharges * np.array([C1_0,C2_0,C3_0,C4_0,C5_0])
+totcharge = np.sum(totcharge)
+log.write('Total charge: {}\n'.format(totcharge))
+log.flush()
+if np.abs(totcharge) > 1e-4:
+    log.write('System is not neutral. Break')
+    log.flush()
+    raise Exception('System is not neutral. Break')
 
-number_molecules = 5
-chargedPairs = [[0,2],[1,3],[2,3]]       # only include pairs
-PAADOP = __PAADOP__
-PAHDOP = __PAHDOP__
-struc = [[0]*PAADOP,[1]*PAHDOP,[2],[3],[4]]
-molCharges = np.array([-1,1,1,-1,0], dtype = float) # charge per segment length of each molecule type
 
 # Forcefield
 u0 =[
@@ -111,9 +133,6 @@ gm_list = None
 data = open(dataFile,'w')
 data.write('# CPAA CPAH CNa CCl CHOH Ctot fI fII CI1 CII1 CI2 CII2 CI3 CII3 CI4 CII4 CI5 CII5  dP dmuPAANa dmuPAHCl dmuNaCl dmuW PI PII relDeltaG calculated_P_bulk fracErr C3\n')
 data.flush()
-
-log = open(logFile,'w')
-log.flush()
 
 cwd = os.getcwd()
 
@@ -229,7 +248,8 @@ for i in range(nC):
     Ctot = sum(Cs)
     CI = np.array(CI0)        
     fII  = 1.-fI
-    CII = (Cs-CI*fI)/fII
+    if not shiftBulk: # if not shift bulk, use this formula, otherwise use previous concentration for phase 2
+        CII = (Cs-CI*fI)/fII
     Dt = Dt0
     DtCpair = DtCpair0
     DtCtot = DtCtot0 
@@ -319,19 +339,21 @@ for i in range(nC):
         fI = fI + Dt[0] * (PI-PII)
         
         # NaCl (salt species)
-        CNa_sI = CI[2] - CI[0] * np.abs(molCharges[0])
-        CCl_sI = CI[3] - CI[1] * np.abs(molCharges[1])
-        CNa_sII = CII[2] - CII[0] * np.abs(molCharges[0])
-        CCl_sII = CII[3] - CII[1] * np.abs(molCharges[1])
+        CNa_sI = CI[2] - CI[0] * np.abs(molCharges[0])/np.abs(molCharges[2])
+        CCl_sI = CI[3] - CI[1] * np.abs(molCharges[1])/np.abs(molCharges[3])
+        CNa_sII = CII[2] - CII[0] * np.abs(molCharges[0])/np.abs(molCharges[2])
+        CCl_sII = CII[3] - CII[1] * np.abs(molCharges[1])/np.abs(molCharges[3])
         #check if these are equal
-        if np.abs(CNa_sI-CCl_sI)/np.abs(CNa_sI) > 1e-2 or np.abs(CNa_sII-CCl_sII)/np.abs(CNa_sII) > 1e-2:
+        if np.abs(CNa_sI/np.abs(molCharges[3])-CCl_sI/np.abs(molCharges[2]))/np.abs(CNa_sI/molCharges[3]) > 1e-2 or np.abs(CNa_sII/np.abs(molCharges[3])-CCl_sII/np.abs(molCharges[2]))/np.abs(CNa_sII/molCharges[3]) > 1e-2:
             print('CI {}'.format(CI))
             print('CII {}'.format(CII))
+            print('concentration of Na and Cl are not balanced')
         #    raise Exception ('concentration of Na and Cl are not balanced')
        #else:
-        CSaltI = CNa_sI
-        CSaltII = CNa_sII
+        CSaltI = CNa_sI/np.abs(molCharges[3])
+        CSaltII = CNa_sII/np.abs(molCharges[3])
         CSaltI = CSaltI - DtCpair[2] * dmuEff[2]
+
         # PAA
         #dt = - DtCpair[0] * dmuEff[0]
         dt =  - DtCpair[0] *  np.min([CI[0], CII[0]]) * dmuEff[0] 
@@ -355,8 +377,8 @@ for i in range(nC):
         CI[4] = CI[4] - Dt[-1] * np.min([CI[4], CII[4]])/5. * dmuEff[3]
         
         # Get CNa and CCl
-        CI[2] = CSaltI + CI[0] * np.abs(molCharges[0])
-        CI[3] = CSaltI + CI[1] * np.abs(molCharges[1])
+        CI[2] = np.abs(molCharges[3])*CSaltI + CI[0] * np.abs(molCharges[0]/molCharges[2])
+        CI[3] = np.abs(molCharges[2])*CSaltI + CI[1] * np.abs(molCharges[1]/molCharges[3])
         
         # fix overflow
         if fI > VolFracBounds[1]:
@@ -374,17 +396,18 @@ for i in range(nC):
                 if idx in [2,3]:
                     print('step {}, Na+ and/or Cl- concentrations are above max'.format(step))
         # recalculate CNa and CCl
-        CI[2] = CSaltI + CI[0] * np.abs(molCharges[0])
-        CI[3] = CSaltI + CI[1] * np.abs(molCharges[1])
+        CI[2] = np.abs(molCharges[3])*CSaltI + CI[0] * np.abs(molCharges[0]/molCharges[2])
+        CI[3] = np.abs(molCharges[2])*CSaltI + CI[1] * np.abs(molCharges[1]/molCharges[3])
         
         if CI[2] < 0 or CI[3] < 0: # set to minimum concentration for electroneutrality
             q_ex = CI[0] * molCharges[0] + CI[1] * molCharges[1]
             if q_ex < 0:
-                CI[2] = np.abs(q_ex/molCharges[2]) + 1e-5
+                CI[2] = np.abs(q_ex/molCharges[2]*molCharges[0]) + np.abs(molCharges[3])*1e-5
                 CI[3] = 1e-5
             else:
-                CI[3] = np.abs(q_ex/molCharges[3]) + 1e-5
+                CI[3] = np.abs(q_ex/molCharges[3]*molCharges[1]) + np.abs(molCharges[2])*1e-5
                 CI[2] = 1e-5
+
         elif CI[2] > Cs[2]/fI: # if na+ of cl- are over the max range, reduce the concentration of both ions 
             CI2_old = CI[2]
             CI[2] = 0.99 * Cs[2]/fI
@@ -470,11 +493,11 @@ for i in range(nC):
         [C1,C2,C3,C4,C5] = fI * CI + (1-fI) * CII
         # check PAA content and electroneutrality 
         CPE = C1+C2
-        Csalt = C3-C1
+        Csalt = (C3-C1* np.abs(molCharges[0]/molCharges[2])) / np.abs(molCharges[3])
         C1 = fPAA * CPE
         C2 = CPE-C1
-        C3 = C1 + Csalt
-        C4 = C2 + Csalt
+        C3 = np.abs(molCharges[3])*Csalt + np.abs(molCharges[0])*C1/np.abs(molCharges[2])
+        C4 = np.abs(molCharges[2])*Csalt + np.abs(molCharges[1])*C2/np.abs(molCharges[3])
 
         shiftBulk = True
         CI_1 = []
@@ -490,8 +513,8 @@ for i in range(nC):
             Ctot_tmp = np.sum(np.array([C1_0,C2_0,C3_0,C4_0,C5_0]))
             Cs_tmp = Ctot_tmp * xs # bring back to initial Ctot
             [C1,C2,C3,C4,C5] = Cs_tmp
-        C3 += dC3
-        C4 += dC3
+        C3 +=  np.abs(molCharges[3])*dC3
+        C4 +=  np.abs(molCharges[2])*dC3
         if C3<0. or C4<0. or np.abs(np.sum(CI[:2])-np.sum(CII[:2]))/np.sum(CII[:2]) <= 1e-5 or End:
             break
     if End:

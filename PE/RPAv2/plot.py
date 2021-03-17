@@ -1,3 +1,4 @@
+from glob import glob
 from scipy.interpolate import interp1d
 import os, sys, re
 import numpy as np
@@ -21,38 +22,26 @@ matplotlib.rc('axes', titlesize=7)
 colors = ['#6495ED','r','#6da81b','#483D8B','#FF8C00','#2E8B57','#800080','#008B8B','#949c2d', '#a34a17','#c43b99','#949c2d','#1E90FF']
 
 ######
-realUnits = True
+realUnits = True 
+cwd=os.getcwd()
 dirs = []
 
-C3s = np.linspace(0.05247, 2., endpoint = True, num = 100)[:28]
-for C3 in C3s:
-    dirs.append('CNaCl{}'.format(round(C3,5)))
+abstol = 0.14
+dirs= glob(os.path.join(cwd,'1./CNa*'))[:-1]
 
-C3s = np.linspace(0.05247, 2., endpoint = True, num = 30)[1:12]
-for C3 in C3s:
-    dirs.append('run3/CNaCl{}'.format(round(C3,5)))
+dirs_tmp = glob(os.path.join(cwd,'1./fin*/CNa*'))
+dirs.extend(dirs_tmp)
 
-C3s = np.linspace(0.57913, 2.5, endpoint = True, num = 20)[:5]
-for C3 in C3s:
-    dirs.append('run5/CNaCl{}'.format(round(C3,5)))
-
-C3s = np.linspace(0.98352, 3.0, endpoint = True, num = 50)[:11]
-for C3 in C3s:
-    dirs.append('run6/CNaCl{}'.format(round(C3,5)))
-
-C3s = np.linspace(1.3036465839518843, 3.0, endpoint = True, num = 50)[:7]
-for C3 in C3s:
-    dirs.append('run7/CNaCl{}'.format(round(C3,5)))
-
-#C3s = np.linspace(1.27063, 3.0, endpoint = True, num = 50)[:5]
-#for C3 in C3s:
-#    dirs.append('run9/CNaCl{}'.format(round(C3,5)))
-
-#C3s = np.linspace(1.25131, 3.0, endpoint = True, num = 50)[:6]
-#for C3 in C3s:
-#    dirs.append('run8/CNaCl{}'.format(round(C3,5)))
+dirs_tmp = glob(os.path.join(cwd,'2./CNa*'))
+dirs.extend(dirs_tmp)
 
 legends = ['0', '1']
+
+# valence
+zPAA = 1.0
+zPAH = 1.0
+zNa = 2.
+zCl = 1.
 
 CIPAAcol = 3 #C PAA
 CIIPAAcol = 4
@@ -66,7 +55,6 @@ CIHOHcol = 11
 CIIHOHcol = 12
 
 nSpecies = 5
-DOI = 1.
 Cs = np.zeros(len(dirs))
 datafile = 'gibbs.dat'
 newdatafile = 'gibbs0.dat'
@@ -74,7 +62,11 @@ newdatafile = 'gibbs0.dat'
 #logfile = 'log1.txt'
 fIcol = 1 
 
-
+# experimental data: Effects of Non-Electrostatic Intermolecular Interactions on the Phase Behavior of pH-Sensitive Polyelectrolyte Complexes. Li 2020. Figure S3
+CIPE_exp = [0,0.001172025,0.002313105,0.003444714,0.002281935,0.002249961,0.004486579,0.003325807,0.003204511] # weight fraction
+CIIPE_exp = [0.471872776,0.435527373,0.430951723,0.437880793,0.455192639,0.432451391,0.458922284,0.420752784,0.352517449]
+CIsalt_exp = [0.089468793,0.545898404,0.969724856,1.197932358,1.418018284,1.890764082,1.972242764,2.379796851,3.675772399] #M
+CIIsalt_exp = [0.050307024,0.3442467,0.727333812,0.922806691,1.004022444,1.30590841,1.435868222,2.015085534,2.749635278]
 #=========
 cwd = os.getcwd()
 
@@ -96,24 +88,86 @@ for i,dir in enumerate(dirs):
     file = open(os.path.join(cwd,dir,datafile), 'r')
     lines = file.readlines()
     lastline = lines[-1] 
-    # get total C
-    vals = [float(a) for a in lastline.split()] #np.loadtxt(os.path.join(cwd,dir,newdatafile))[0]    
+
+    try: 
+        vals = [float(a) for a in lastline.split()] #np.loadtxt(os.path.join(cwd,dir,newdatafile))[0]    
+        boolean = np.isnan(vals)+np.isinf(vals)
+        if sum(boolean)>0:
+            vals = np.zeros(50)
+    except:
+        vals = np.zeros(50)
     fI = vals[1]
     CIs = vals[3:3+nSpecies*2:2]
     CIIs = vals[4:3+nSpecies*2:2]
     Cs[i] = fI * np.sum(CIs) + (1-fI) * np.sum(CIIs)
     # get average volume fraction and concentration in boxI
-    fIs[i] = vals[fIcol] 
-    CIPAAs[i] = vals[CIPAAcol] 
-    CIPAHs[i] = vals[CIPAHcol] 
-    CINas[i] = vals[CINacol] 
+    fIs[i] = vals[fIcol] #np.loadtxt(filename)[-1,fIcol]
+    CIPAAs[i] = vals[CIPAAcol] #np.loadtxt(filename)[-1,CIPAAcol]
+    CIPAHs[i] = vals[CIPAHcol] #np.loadtxt(filename)[-1,CIPAHcol]
+    CINas[i] = vals[CINacol] #np.loadtxt(filename)[-1,CINacol]
     CICls[i] =  vals[CIClcol]
-    CIHOHs[i] = vals[CIHOHcol] 
-    CIIPAAs[i] = vals[CIIPAAcol] 
-    CIIPAHs[i] = vals[CIIPAHcol]
-    CIINas[i] = vals[CIINacol] 
+    CIHOHs[i] = vals[CIHOHcol] #np.loadtxt(filename)[-1,CIHOHcol]
+    CIIPAAs[i] = vals[CIIPAAcol] #np.loadtxt(filename)[-1,CIPAAcol]
+    CIIPAHs[i] = vals[CIIPAHcol] #np.loadtxt(filename)[-1,CIPAHcol]
+    CIINas[i] = vals[CIINacol] #np.loadtxt(filename)[-1,CINacol]
     CIICls[i] =  vals[CIIClcol]
-    CIIHOHs[i] = vals[CIIHOHcol]
+    CIIHOHs[i] = vals[CIIHOHcol] #np.loadtxt(filename)[-1,CIHOHcol]
+
+# remove zero elements
+nonzeroId = np.where(fIs!=0.)[0]
+Cs = Cs[nonzeroId]
+fIs = fIs[nonzeroId]
+CIPAAs = CIPAAs[nonzeroId]
+CIPAHs = CIPAHs[nonzeroId]
+CINas = CINas[nonzeroId]
+CICls = CICls[nonzeroId]
+CIHOHs = CIHOHs[nonzeroId]
+CIIPAAs = CIIPAAs[nonzeroId]
+CIIPAHs = CIIPAHs[nonzeroId]
+CIINas = CIINas[nonzeroId]
+CIICls = CIICls[nonzeroId]
+CIIHOHs = CIIHOHs[nonzeroId]
+
+# sort base on salt concentration
+CNas = fIs * CINas + (1-fIs) * CIINas
+CCls = fIs * CICls + (1-fIs) * CIICls
+Csalts = np.array([min(CNas[i],CCls[i]) for i in range(len(CNas))])
+a =  np.vstack((Csalts,Cs,fIs,CIPAAs,CIPAHs,CINas,CICls,CIHOHs,CIIPAAs,CIIPAHs,CIINas,CIICls,CIIHOHs)).transpose().tolist()
+a = np.array(sorted(a, key=itemgetter(0)))
+Cs = a[:,1]
+fIs = a[:,2]
+CIPAAs = a[:,3]
+CIPAHs = a[:,4]
+CINas = a[:,5]
+CICls = a[:,6]
+CIHOHs = a[:,7]
+CIIPAAs = a[:,8]
+CIIPAHs = a[:,9]
+CIINas = a[:,10]
+CIICls = a[:,11]
+CIIHOHs = a[:,12]
+
+# remove data not in 2phase region
+n0 = len(fIs)
+d = np.abs((CIPAAs+CIPAHs)-(CIIPAAs+CIIPAHs))
+ind = np.where(d <= abstol)[0]
+if len(ind)>0:
+    ind = min(ind)
+else:
+    ind = None
+d = d[:ind]
+Cs = Cs[:ind]
+fIs = fIs[:ind]
+CIPAAs = CIPAAs[:ind]
+CIPAHs = CIPAHs[:ind]
+CINas = CINas[:ind]
+CICls = CICls[:ind]
+CIHOHs = CIHOHs[:ind]
+CIIPAAs = CIIPAAs[:ind]
+CIIPAHs = CIIPAHs[:ind]
+CIINas = CIINas[:ind]
+CIICls = CIICls[:ind]
+CIIHOHs = CIIHOHs[:ind]
 
 CPAAs = fIs * CIPAAs + (1-fIs) * CIIPAAs
 CPAHs = fIs * CIPAHs + (1-fIs) * CIIPAHs
@@ -121,10 +175,33 @@ CNas = fIs * CINas + (1-fIs) * CIINas
 CCls = fIs * CICls + (1-fIs) * CIICls
 CHOHs = fIs * CIHOHs + (1-fIs) * CIIHOHs
 
-#get salt concentration
-CIsalts = np.array([min(CINas[i],CICls[i]) for i in range(len(CINas))])
-CIIsalts = np.array([min(CIINas[i],CIICls[i]) for i in range(len(CIINas))])
-Csalts = np.array([min(CNas[i],CCls[i]) for i in range(len(CNas))])
+#get salt concentration based on Na+
+CIsalts0 = 1/zCl * (CINas - zPAA/zNa * CIPAAs)
+CIIsalts0 = 1/zCl * (CIINas - zPAA/zNa * CIIPAAs)
+Csalts0 =  1/zCl * (CNas - zPAA/zNa * CPAAs)
+#get salt concentration based on Cl-
+CIsalts1 = 1/zNa * (CICls - zPAH/zCl * CIPAHs)
+CIIsalts1 = 1/zNa * (CIICls - zPAH/zCl * CIIPAHs)
+Csalts1 = 1/zNa * (CCls - zPAH/zCl * CPAHs)
+
+print('mismatch in CIsalts: {}'.format(CIsalts0-CIsalts1))
+print('mismatch in CIIsalts: {}'.format(CIIsalts0-CIIsalts1))
+print('mismatch in Csalts: {}'.format(Csalts0-Csalts1))
+
+CIsalts = np.min([CIsalts0,CIsalts1],axis=0)
+CIIsalts = np.min([CIIsalts0,CIIsalts1],axis=0)
+Csalts = np.min([Csalts0,Csalts1],axis=0)
+
+# log file
+n1 = len(fIs)
+print('\nDiscard {} points below composition difference {}'.format(n0-n1,abstol))
+log = open('log.txt','w')
+s = '# min_(CIIPAAs+CIIPAHs)-(CIPAAs+CIPAHs) CNaCl(bulk)'
+s += '\n{} {}\n'.format(d[-1], Csalts[-1])
+
+print(s)
+log.write(s)
+log.flush()
 
 # convert to volume fraction
 voHOH = 0.31**3 #nm^3
@@ -185,9 +262,9 @@ if realUnits:
 ##PAA##
 fig,ax = plt.subplots(nrows=1, ncols=1, figsize=[3,2])
 ax.set_prop_cycle('color', colors)
-ax.plot(CIPAAs, CIsalts, marker='o', ms=3,ls='None',lw=1)
-ax.plot(CIIPAAs, CIIsalts, marker='o', ms=3,ls='None',lw=1)
-ax.plot(CPAAs, Csalts, marker='d', ms=3,ls='None',lw=1)
+ax.plot(CIPAAs, CIsalts, marker='o', ms=1,ls='None',lw=1)
+ax.plot(CIIPAAs, CIIsalts, marker='o', ms=1,ls='None',lw=1)
+ax.plot(CPAAs, Csalts, marker='d', ms=1,ls='None',lw=1)
 #tie line
 for i in range(len(CINas)):
     if realUnits:
@@ -210,9 +287,9 @@ plt.savefig('_'.join(re.split(' |=|,',title))+'.png',dpi=500,transparent=True,bb
 ##PAH##
 fig,ax = plt.subplots(nrows=1, ncols=1, figsize=[3,2])
 ax.set_prop_cycle('color', colors)
-ax.plot(CIPAHs, CIsalts, marker='o', ms=3,ls='None',lw=1)
-ax.plot(CIIPAHs, CIIsalts, marker='o', ms=3,ls='None',lw=1)
-ax.plot(CPAHs, Csalts, marker='d', ms=3,ls='None',lw=1)
+ax.plot(CIPAHs, CIsalts, marker='o', ms=1,ls='None',lw=1)
+ax.plot(CIIPAHs, CIIsalts, marker='o', ms=1,ls='None',lw=1)
+ax.plot(CPAHs, Csalts, marker='d', ms=1,ls='None',lw=1)
 #tie line
 for i in range(len(CINas)):
     if realUnits:
@@ -235,45 +312,47 @@ plt.savefig('_'.join(re.split(' |=|,',title))+'.png',dpi=500,transparent=True,bb
 ##PE##
 fig,ax = plt.subplots(nrows=1, ncols=1, figsize=[3,2])
 ax.set_prop_cycle('color', colors)
-ax.plot(CIPAAs+CIPAHs, CIsalts, marker='o', ms=3,ls='None',lw=1, c = '#6495ED',label = 'RPA')
-ax.plot(CIIPAAs+CIIPAHs, CIIsalts, marker='o', ms=3,ls='None',lw=1)
-ax.plot(CPAAs+CPAHs, Csalts, marker='d', ms=3,ls='None',lw=1)
+ax.plot(CIPAAs+CIPAHs, CIsalts, marker='o', ms=1,ls='None',lw=1, c = '#6495ED',label = 'RPA')
+ax.plot(CIIPAAs+CIIPAHs, CIIsalts, marker='o', ms=1,ls='None',lw=1)
+ax.plot(CPAAs+CPAHs, Csalts, marker='d', ms=1,ls='None',lw=1)
 #ax.plot([0.0, 0.538577154],[0.498173364,0.232480903], ls=':', lw=1, marker= 'x', c ='#483D8B', label = 'AA')
-ax.plot([0.0,0.085112615],[0.007306543,0.008302889], ls=':', lw=1, marker= '*', c ='#6da81b', label = 'CG')
-
+#ax.plot([0.0,0.085112615],[0.007306543,0.008302889], ls=':', lw=1, marker= '*', c ='#6da81b', label = 'CG')
+if realUnits:
+    ax.plot(CIPE_exp, CIsalt_exp, marker='^', ms=1,ls='None',lw=1, mfc = None, mec= 'b',label = 'Li 2020')
+    ax.plot(CIIPE_exp, CIIsalt_exp, marker='^', ms=1,ls='None',lw=1, mfc = None, mec= 'b')
 # interpolate
 xI = (CIPAAs+CIPAHs)[::3]
 xII = np.flip(CIIPAAs+CIIPAHs)[::3]
 yI = CIsalts[::3]
 yII = np.flip(CIIsalts)[::3]
 
-x = np.hstack((xI[-2],xII)) 
-y = np.hstack((yI[-2],yII))
-a =  np.vstack((np.log10(xI),yI)).transpose().tolist()
-b = np.vstack((xII,yII)).transpose().tolist()
-c = np.vstack((x,y)).transpose().tolist()
+#x = np.hstack((xI[-2],xII)) 
+#y = np.hstack((yI[-2],yII))
+#a =  np.vstack((np.log10(xI),yI)).transpose().tolist()
+#b = np.vstack((xII,yII)).transpose().tolist()
+#c = np.vstack((x,y)).transpose().tolist()
 
-a = np.array(sorted(a, key=itemgetter(0)))
-b = np.array(sorted(b, key=itemgetter(0)))
-c = np.array(sorted(c, key=itemgetter(0)))
+#a = np.array(sorted(a, key=itemgetter(0)))
+#b = np.array(sorted(b, key=itemgetter(0)))
+#c = np.array(sorted(c, key=itemgetter(0)))
 
-spline = CubicSpline(c[:,0], c[:,1])
-splineI = CubicSpline(a[:,0],a[:,1])
-splineII = CubicSpline(b[:,0],b[:,1])
-f = interp1d(c[:,0], c[:,1], kind = 'quadratic')
+#spline = CubicSpline(c[:,0], c[:,1])
+#splineI = CubicSpline(a[:,0],a[:,1])
+#splineII = CubicSpline(b[:,0],b[:,1])
+#f = interp1d(c[:,0], c[:,1], kind = 'quadratic')
 
-logxIfit = np.linspace(np.log10(min(xI)),np.log10(max(xI)*1.2),num=500)
-xIIfit = np.linspace(0.99*min(xII),max(xII),num=500)
-xfit = np.linspace(min(x),max(x), num = 1000)
+#logxIfit = np.linspace(np.log10(min(xI)),np.log10(max(xI)*1.2),num=500)
+#xIIfit = np.linspace(0.99*min(xII),max(xII),num=500)
+#xfit = np.linspace(min(x),max(x), num = 1000)
 
-yIfit = splineI(logxIfit)
-yIIfit = splineII(xIIfit)
+#yIfit = splineI(logxIfit)
+#yIIfit = splineII(xIIfit)
 #yfit = spline(xfit)
-yfit = f(xfit)
-
-ax.plot(xfit,yfit,ls = '-', c='b')
-ax.plot(xIIfit,yIIfit,ls=':',c='k')
-ax.plot(10.**logxIfit,yIfit,ls=':',c='k')
+#yfit = f(xfit)
+#
+#ax.plot(xfit,yfit,ls = '-', c='b')
+#ax.plot(xIIfit,yIIfit,ls=':',c='k')
+#ax.plot(10.**logxIfit,yIfit,ls=':',c='k')
 
 #tie line
 for i in range(len(CINas)):
@@ -297,9 +376,9 @@ plt.savefig('_'.join(re.split(' |=|,',title))+'.png',dpi=500,transparent=True,bb
 #semilogx
 fig,ax = plt.subplots(nrows=1, ncols=1, figsize=[3,2])
 ax.set_prop_cycle('color', colors)
-ax.semilogx(CIPAAs+CIPAHs, CIsalts, marker='o', ms=3,ls='None',lw=1, c = '#6495ED',label = 'RPA')
-ax.semilogx(CIIPAAs+CIIPAHs, CIIsalts, marker='o', ms=3,ls='None',lw=1)
-ax.semilogx(CPAAs+CPAHs, Csalts, marker='d', ms=3, ls='None',lw=1)
+ax.semilogx(CIPAAs+CIPAHs, CIsalts, marker='o', ms=1,ls='None',lw=1, c = '#6495ED',label = 'RPA')
+ax.semilogx(CIIPAAs+CIIPAHs, CIIsalts, marker='o', ms=1,ls='None',lw=1)
+ax.semilogx(CPAAs+CPAHs, Csalts, marker='d', ms=1, ls='None',lw=1)
 #tie line
 for i in range(len(CINas)):
     if realUnits:
@@ -329,7 +408,7 @@ plt.savefig('_'.join(re.split(' |=|,',title))+'.png',dpi=500,transparent=True,bb
 #for i in range(nObs):
 #    fig,ax = plt.subplots(nrows=1, ncols=1, figsize=[3,2])
 #    y = errors[:,i]
-#    ax.plot(Csalts,y,marker='o', ms=3,ls=':',lw=0.5, c='k')
+#    ax.plot(Csalts,y,marker='o', ms=1,ls=':',lw=0.5, c='k')
 #    plt.xlabel(xlabel)
 #    plt.ylabel('{}'.format(obsName[i]))
 #    title = '{}'.format(obsName[i])
@@ -337,7 +416,7 @@ plt.savefig('_'.join(re.split(' |=|,',title))+'.png',dpi=500,transparent=True,bb
 #    plt.savefig('_'.join(re.split(' |=|,',title))+'.png',dpi=500,transparent=True,bbox_inches="tight")
 
 #fig,ax = plt.subplots(nrows=1, ncols=1, figsize=[3,2])
-#ax.semilogy(xSalts,relerrors, marker='o', ms=3,ls=':',lw=0.5, c='k')
+#ax.semilogy(xSalts,relerrors, marker='o', ms=1,ls=':',lw=0.5, c='k')
 #plt.xlabel('xSalt')
 #plt.ylabel('{}'.format('Max relative error'))
 #title = 'max relative error'
