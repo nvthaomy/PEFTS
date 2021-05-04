@@ -1,3 +1,4 @@
+a_option=0
 PAADOP=150
 PAHDOP=150
 PAAcharge=1
@@ -8,14 +9,14 @@ sweeptempOut=runRPAf1_sweepfPAA.py
 tempIn=runRPAf1_temp.py
 tempOut=runRPAf1.py
 Py='/home/mnguyen/bin/PEFTS/PE/RPAv2/setup.py'
-inidatfile=/home/mnguyen/rpa/atactic/xp0.3_60AA24_60AH24_880nacl_20000hoh_mixedDOI_f0_0.5_1_1_1/1./$subfolder/sweep/gibbs_final1.dat
 maindir=$PWD
+inidatfile=${maindir}/$subfolder/sweep/gibbs_final1.dat
 
 mkdir N$PAADOP
 mkdir $subfolder
 mkdir $subfolder/sweep
 #1. sweep fPAA
-python ~/bin/PEFTS/PE/srel2fts.py PE_ff.dat $sweeptempIn $subfolder/sweep/$sweeptempOut $PAADOP $PAHDOP
+python ~/bin/PEFTS/PE/srel2fts.py PE_ff.dat $sweeptempIn $subfolder/sweep/$sweeptempOut $PAADOP $PAHDOP $a_option
 cd $subfolder/sweep/
 sed -i "s/__PAAcharge__/$PAAcharge/g" $sweeptempOut
 sed -i "s/__PAHcharge__/$PAHcharge/g" $sweeptempOut
@@ -23,7 +24,7 @@ python $sweeptempOut
 cd $maindir
 
 #2. add forcefield in runRPAf1_temp.py
-python ~/bin/PEFTS/PE/srel2fts.py PE_ff.dat $tempIn ${subfolder}/$tempOut $PAADOP $PAHDOP 
+python ~/bin/PEFTS/PE/srel2fts.py PE_ff.dat $tempIn ${subfolder}/$tempOut $PAADOP $PAHDOP $a_option
 
 #3. add initial guess, make folder and submit jobs for different fPAA values
 cd $subfolder
