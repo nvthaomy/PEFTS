@@ -1,11 +1,13 @@
 import numpy as np
-import sys, re
+import sys, re, ast
 from scipy.integrate import simps
 ffFile = str(sys.argv[1])
 templateIn = str(sys.argv[2])
 templateOut = str(sys.argv[3])
 PAADOP = str(sys.argv[4])
 PAHDOP = str(sys.argv[5])
+a_option = int(sys.argv[6]) # 0 1 2
+
 lengthScale = 0.31 #length scale used in Srel in nm
 
 pairs = {
@@ -54,7 +56,14 @@ bonds = {
 'BondB_B+': (3,4)}
 
 #bead radii in Srel unit
-a = {1:4.5/3.1, 2:4.5/3.1, 3:4.5/3.1, 4:4.5/3.1, 5: 1.0, 6: 1.0, 7:1.0}
+if a_option == 0: 
+    a = {1:4.5/3.1, 2:4.5/3.1, 3:4.5/3.1, 4:4.5/3.1, 5: 1.0, 6: 1.0, 7:1.0}
+elif a_option == 1:
+    a = {1:0.75/0.31, 2:0.75/0.31, 3:0.75/0.31, 4:0.75/0.31, 5: 0.52/0.31, 6: 0.52/0.31, 7:0.52/0.31}
+elif a_option == 2:
+    a = {1:1./0.31, 2:1./0.31, 3:1./0.31, 4:1./0.31, 5: 0.75/0.31, 6: 0.75/0.31, 7:0.75/0.31}
+else:
+    raise Exception('Option is not supported')
 lb = 2.4 #Srel Bjerrum
 
 #FTS params
@@ -108,39 +117,64 @@ f = open(ffFile,'r')
 lines = f.readlines()
 readGauss = False
 readBond = False
+dict_str = []
+print('===FTS parameters===')
 for line in lines:
-    if line.split()[-1] in pairs.keys():
-        pot = line.split()[-1]
-        pair = pairs[pot]  
-        readGauss = True
-#        print(pot)
-    if readGauss and "'B'" in line.split(): 
-        tempB =  line.split()[2]
-        if ',' in tempB:
-            tempB = tempB.split(',')[0]
-        B = float(tempB)
-        u0 = B * (2*np.pi * (a[pair[0]]**2 + a[pair[1]]**2))**(3./2.)
-        u0 *= lengthScale**3 #convert to real unit
-        BFTS_tmp = u0 * Nref**2 / Rg0**3
-        BFTS.update({pair: BFTS_tmp})
-#        print(pair)
-        readGauss = False
+    if '>>>' in line:
+        if dict_str:
+            if readGauss:
+                dict_tmp = ast.literal_eval(' '.join(dict_str))
+                B = float(dict_tmp['B'])           
+                u0 = B * (2*np.pi * (a[pair[0]]**2 + a[pair[1]]**2))**(3./2.)
+                u0 *= lengthScale**3 #convert to real unit
+                BFTS_tmp = u0 * Nref**2 / Rg0**3 
+                BFTS.update({pair: BFTS_tmp})
+                readGauss = False
+                print ('{}: {}'.format(pot,BFTS_tmp))
+            elif readBond:
+                dict_tmp = ast.literal_eval(' '.join(dict_str))
+                r0 = float(dict_tmp['Dist0'])
+                k = float(dict_tmp['FConst'])
+                b = GetRMSBond(k,r0)
+                b *= lengthScale/bref
+                r0 *= lengthScale/bref
+                bs.update({pair: b})
+                readBond = False
+                print ('{}: k {}, b {}'.format(pot,k,b))
+        if line.split()[-1] in pairs.keys():
+            pot = line.split()[-1]
+            pair = pairs[pot]  
+            readGauss = True
+            dict_str = []
+        elif line.split()[-1] in bonds.keys():
+            pot = line.split()[-1]
+            pair = bonds[pot]  
+            readBond = True
+            dict_str = []
+    elif readGauss or readBond:
+        dict_str.append(line)
+#end of file
+if dict_str:
+            if readGauss:
+                dict_tmp = ast.literal_eval(' '.join(dict_str))
+                B = float(dict_tmp['B'])
+                u0 = B * (2*np.pi * (a[pair[0]]**2 + a[pair[1]]**2))**(3./2.)
+                u0 *= lengthScale**3 #convert to real unit
+                BFTS_tmp = u0 * Nref**2 / Rg0**3
+                BFTS.update({pair: BFTS_tmp})
+                readGauss = False
+                print ('{}: {}'.format(pot,BFTS_tmp))
+            elif readBond:
+                dict_tmp = ast.literal_eval(' '.join(dict_str))
+                r0 = float(dict_tmp['Dist0'])
+                k = float(dict_tmp['FConst'])
+                b = GetRMSBond(k,r0)
+                b *= lengthScale/bref
+                r0 *= lengthScale/bref
+                bs.update({pair: b})
+                readBond = False
+                print ('{}: k {}, b {}'.format(pot,k,b))
 
-    if line.split()[-1] in bonds.keys():
-        pot = line.split()[-1]
-        pair = bonds[pot]  
-        readBond = True
-#        print(pot)
-    if readBond and 'Dist0' in line:
-        r0 = float(line.split()[2])
-    if readBond and 'FConst' in line:
-        k = float(line.split()[2])
-        b = GetRMSBond(k,r0)
-        b *= lengthScale/bref 
-        r0 *= lengthScale/bref 
-#        print('r0 {}, b {}'.format(r0,b))
-        bs.update({pair: b})
-        readBond = False
 #get E
 E = 4 * np.pi * lb * lengthScale * Nref**2 / Rg0
 
