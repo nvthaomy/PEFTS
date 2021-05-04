@@ -64,6 +64,7 @@ elif a_option == 2:
     a = {1:1./0.31, 2:1./0.31, 3:1./0.31, 4:1./0.31, 5: 0.75/0.31, 6: 0.75/0.31, 7:0.75/0.31}
 else:
     raise Exception('Option is not supported')
+print('bead radii {}'.format(a))
 lb = 2.4 #Srel Bjerrum
 
 #FTS params
