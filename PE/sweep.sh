@@ -1,28 +1,33 @@
 #!/bin/bash
-
+round() {
+  printf "%.${2}f" "${1}"
+}
+# ROUND_PI=$(round ${PI} 3)
 Ext=
-fts=/home/mnguyen/bin/PolyFTS_feature-linkers_Nov2020/bin/Release/PolyFTSGPU.x
-dirs=(11wtpercentPE_0.3MNaCl_N100_xA-0.017_xB+0.017_xNa0.024_xCl0.024_a1.0)
-x1s=(0.017608217)
-x2s=(0.017608217)
-x3s=(0.023844461)
-x4s=(0.023844461)
+fts=/home/mnguyen/bin/PolyFTS_feature-linkers/bin/Release/PolyFTSGPU.x
+Prefix=(40wtpercentPE_0.3MNaCl 40wtpercentPE_0.3MNaCl 40wtpercentPE_0.3MNaCl)
+Ext=(aw0.75_C29.43_run0 aw0.75_C29.43_run1 aw0.75_C29.43_run2)
+x1s=(0.047769179 0.047769179 0.047769179)
+x2s=(0.047769179 0.047769179 0.047769179)
+x3s=(0.054140127 0.054140127 0.054140127)
+x4s=(0.054140127 0.054140127 0.054140127)
 length=${#x1s[@]}
 ffFile=PE_ff.dat
-templateIn=template0_PE.in
+templateIn=template0_PE_aw0.75.in
 templateOut=template_PE.in
-PAADOP=100
-PAHDOP=100
-C1=32.72680945
+PAADOP=150
+PAHDOP=150
+C1=29.43171193
 P=285.9924138
 includeideal=true
-ntsteps=30
-numBlocks=1000
-numThreads=6
-python /home/mnguyen/bin/PEFTS/PE/srel2fts.py $ffFile $templateIn $templateOut $PAADOP $PAHDOP
+ntsteps=1
+numBlocks=4000
+numThreads=1
 
+python ~/bin/PEFTS/PE/srel2fts.py $ffFile $templateIn $templateOut $PAADOP $PAHDOP 2
+# asmear options: 0 1 2
 for ((i=0;i<$length;i++)); do
-    mydir=${dirs[$i]}
+    mydir=${Prefix[$i]}_NPAA${PAADOP}_NPAH${PAHDOP}_xA-$(round ${x1s[$i]} 3)_xB+$(round ${x2s[$i]} 3)_xNa$(round ${x3s[$i]} 3)_xCl$(round ${x4s[$i]} 3)_${Ext[$i]}
     x1=${x1s[$i]}
     x2=${x2s[$i]}
     x3=${x3s[$i]}
@@ -31,7 +36,7 @@ for ((i=0;i<$length;i++)); do
     echo === xPAA = $x1  ===
     cp  run_podgpu.template $mydir/run.sh
     cp $templateOut $mydir/
-    sed -i "s/__jobName__/$Ext${mydir}/g" $mydir/run.sh
+    sed -i "s/__jobName__/${mydir}/g" $mydir/run.sh
     sed -i "s/__x1__/${x1}/g" $mydir/run.sh
     sed -i "s/__x2__/${x2}/g" $mydir/run.sh
     sed -i "s/__x3__/${x3}/g" $mydir/run.sh
@@ -45,7 +50,7 @@ for ((i=0;i<$length;i++)); do
     sed -i "s/__numThreads__/${numThreads}/g" $mydir/run.sh
     sed -i "s#__fts__#${fts}#g" $mydir/run.sh
     cd $mydir
-    qsub run.sh
+#    qsub run.sh
     cd ..
 done
 
