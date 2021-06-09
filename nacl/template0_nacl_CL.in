@@ -17,7 +17,7 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
     Charge = 1.0 -1.0 0.0 #na+ cl- hoh
     Dipole = 0.
     Polarizability  = 0.
-    GaussSmearWidth = __aNa__ __aCl__ __aHOH__
+    GaussSmearWidth = __a6__ __a7__ __a5__ 
   }
 
   chains {
@@ -44,20 +44,20 @@ models { # triblock in mixture. PE, PSS, hexane, propanol
  model1 {
     cell {
       Dim         = 3
-      CellScaling = 13
+      CellScaling = 28
       CellLengths =  0.3 0.3 0.3
       CellAngles  = 90 90 90
-      NPW         = 13 13 13 
+      NPW         = 28 28 28 
     }
 
 
     interactions {
-      BExclVolume11 = __B11__  #15.1*(0.31nm)^3/(1nm^3=Rg0^3)
-      BExclVolume22 = __B22__
-      BExclVolume33 = __B33__
-      BExclVolume23 = __B23__
-      BExclVolume12 = __B12__
-      BExclVolume13 = __B13__
+      BExclVolume11 = __B66__  #15.1*(0.31nm)^3/(1nm^3=Rg0^3)
+      BExclVolume22 = __B77__
+      BExclVolume33 = __B55__
+      BExclVolume23 = __B57__
+      BExclVolume12 = __B67__
+      BExclVolume13 = __B56__
       ApplyCompressibilityConstraint = False
       EElecStatic   = __E__ #8.998777997 # 4pi IFF background epsilon=1
       EApplied      = 0. 0. 0.      
@@ -98,7 +98,7 @@ simulation {
   FieldUpdater = PO
 
   TimeStepDT = 0.1
-  lambdaForceScale = 0.1 1.0
+  lambdaForceScale = 0.1 0.1 1.0
   lambdaStressScale = 0.01
 
   #jobtype = SCFT 
@@ -106,7 +106,7 @@ simulation {
   #TimeStepDT = 1.0
   #lambdaForceScale = 0.5 1.0
 
-  NumTimeStepsPerBlock = 500
+  NumTimeStepsPerBlock = 100
   #NumBlocks = 36000
   NumBlocks = __NumBlocks__
 
@@ -124,7 +124,7 @@ simulation {
     OutputFormattedFields = false
 
     OutputFields         = HFields
-    FieldOutputSpace     = rspace  # rspace, kspace or both
+    FieldOutputSpace     = both  # rspace, kspace or both
   }
 }
 

@@ -49,7 +49,7 @@ dtC=0.2
 dtv=0.001
 ntsteps=int(sys.argv[6]) #50
 numBlocks=int(sys.argv[7]) #500
-
+FTS=str(sys.argv[8])
 # Prepare output files
 GibbsFile = open("pmatchCL.dat","w")
 GibbsFile.write("# step C1 P1 mu1 mu2 mu3\n")
@@ -80,7 +80,7 @@ for t in range(ntsteps):
         runfile.write(ini)
         runfile.close()
     #call(["PolyFTSGPU.x","run.in"])
-    call('/home/mnguyen/bin/PolyFTS_hotfix-DiscreteChainBugs/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
+    call('{} run.in > run.out'.format(FTS), shell=True)
 
     # Data analysis:
 
@@ -276,8 +276,7 @@ with open(template,'r') as myfile:
     runfile = open("run.in","w")
     runfile.write(ini)
     runfile.close()
-call('/home/mnguyen/bin/PolyFTS_hotfix-DiscreteChainBugs/bin/Release/PolyFTSPLL.x run.in > run.out', shell=True)
-
+call('{} run.in > run.out'.format(FTS), shell=True)
 
 print('Final average C: {}'.format(Cavg))
 print('... cumulative runtime: {}'.format(time.time()-timestart))
