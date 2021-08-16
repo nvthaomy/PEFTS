@@ -105,8 +105,12 @@ bs = {}
 
 def GetRMSBond(k,r0,nbin=1000,bmax=None,plot=False):
     if bmax == None:
-        bmax = r0 * 3.
-    b, db = np.linspace(0.,bmax,num=nbin,retstep=True)
+        if r0 > 0.:
+            bmax = r0 * 10.
+        else:
+            bmax = 10.
+    b, db = np.linspace(1e-4,bmax,num=nbin,retstep=True)
+
     U = k*(b-r0)**2
     num = np.multiply(b**4,np.exp(-U)) # a factor of b**2 comes from reexpressing in spherical coord.
     num = simps(num,b)
@@ -125,14 +129,23 @@ def GetRMSBond(k,r0,nbin=1000,bmax=None,plot=False):
     w0 = np.multiply(b**2,np.exp(-U0))/den0
     #print('RMSb from offset Harmonic potential {}'.format(RMSb))
     #print('RMSb from zero-centered Harmonic potential {}'.format(RMSb0))
+
+    if r0 == 0: # initial potential is zero centered Harmonic bond
+        RMSb2 = (3./2./k)**(0.5)
+#        print('RMSb from fitting: {}'.format(RMSb))
+#        print('RMSb from direct calculation: {}'.format(RMSb2))
+        RMSb = RMSb2
     if plot:
         import matplotlib.pyplot as plt
         import matplotlib
         matplotlib.rc('font', size=7)
         matplotlib.rc('axes', titlesize=7)
         fig,ax = plt.subplots(nrows=1, ncols=1, figsize=[3,2])
-        ax.plot(b,w,c='k', label='Offset')
-        ax.plot(b,w0,c='b',label='Zero centered')
+        if r0 == 0.:
+            ax.plot(b,w,c='k')
+        else:
+            ax.plot(b,w,c='k', label='Offset')
+            ax.plot(b,w0,c='b',label='Zero centered')
         ax.vlines(RMSb, 0, max(w)*2, linestyles=':', colors='r',)
         plt.ylim(0,max(w)*1.1)
         plt.xlabel('r')
