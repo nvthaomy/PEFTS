@@ -1,14 +1,27 @@
 import numpy as np
 import sys, re, ast
 from scipy.integrate import simps
-ffFile = str(sys.argv[1])
-templateIn = str(sys.argv[2])
-templateOut = str(sys.argv[3])
-PAADOP = str(sys.argv[4])
-PAHDOP = str(sys.argv[5])
-a_option = int(sys.argv[6]) # 0 1 2
 
-lengthScale = 0.31 #length scale used in Srel in nm
+import argparse as ap
+parser = ap.ArgumentParser(description='write FTS file')
+parser.add_argument('ffFile', type=str)
+parser.add_argument('templateIn', type=str)
+parser.add_argument('templateOut', type=str)
+parser.add_argument('PAADOP', type=int)
+parser.add_argument('PAHDOP', type=int)
+parser.add_argument('a_option',type=int, help='0, 1, 2')
+parser.add_argument('-a', type = float, default = 0.31, help='length scale used in Srel in nm')
+parser.add_argument('-lb', type = float, default = 2.4, help='Srel Bjerrum length in terms of length scale unit')
+args = parser.parse_args()
+
+ffFile=args.ffFile
+templateIn=args.templateIn
+templateOut=args.templateOut
+PAADOP=args.PAADOP
+PAHDOP=args.PAHDOP
+a_option=args.a_option
+lengthScale = args.a  #length scale used in Srel in nm
+lb = args.lb #Srel Bjerrum
 
 pairs = {
 'LJGaussA-_A-0': (1,1),
@@ -17,7 +30,10 @@ pairs = {
 'LJGaussB_B0': (4,4),
 'LJGaussHOH_HOH0': (5,5),
 'LJGaussNa+_Na+0': (6,6),
-'LJGaussCl-_Cl-0': (7,7), 
+'LJGaussCl-_Cl-0': (7,7),
+'LJGaussC+_C+0': (8,8),
+'LJGaussSO4_SO40': (9,9),
+'LJGaussC2_C20': (10,10),
 
 'LJGaussA_A-0' : (1,2),
 'LJGaussA-_B+0': (1,3),
@@ -44,8 +60,16 @@ pairs = {
 
 'LJGaussHOH_Na+0': (5,6),
 'LJGaussCl-_HOH0': (5,7),
+'LJGaussC+_HOH0': (5,8),
+'LJGaussHOH_SO40': (5,9),
+'LJGaussC2_HOH0': (5,10),
 
-'LJGaussCl-_Na+0': (6,7)}
+'LJGaussCl-_Na+0': (6,7),
+
+'LJGaussC+_SO40': (8,9),
+'LJGaussC+_C20': (8,10),
+
+'LJGaussC2_SO40': (9,10)}
 
 bonds = {
 'BondA-_A-': (1,1),
@@ -53,19 +77,22 @@ bonds = {
 'BondA_A-': (1,2),
 'BondB+_B+': (3,3),
 'BondB_B': (4,4),
-'BondB_B+': (3,4)}
+'BondB_B+': (3,4),
+
+'BondC+_C+': (8,8),
+'BondC2_SO4': (9,9),
+'BondC2_C2': (10,10)}
 
 #bead radii in Srel unit
 if a_option == 0: 
-    a = {1:4.5/3.1, 2:4.5/3.1, 3:4.5/3.1, 4:4.5/3.1, 5: 1.0, 6: 1.0, 7:1.0}
+    a = {1:0.45/lengthScale, 2:0.45/lengthScale, 3:0.45/lengthScale, 4:0.45/lengthScale, 5: 1.0, 6: 1.0, 7:1.0, 8: 0.63/lengthScale, 9: 1.0, 10: 1.0}
 elif a_option == 1:
-    a = {1:0.75/0.31, 2:0.75/0.31, 3:0.75/0.31, 4:0.75/0.31, 5: 0.52/0.31, 6: 0.52/0.31, 7:0.52/0.31}
+    a = {1:0.75/lengthScale, 2:0.75/lengthScale, 3:0.75/lengthScale, 4:0.75/lengthScale, 5: 0.52/lengthScale, 6: 0.52/lengthScale, 7:0.52/lengthScale}
 elif a_option == 2:
-    a = {1:1.09/0.31, 2:1.09/0.31, 3:1.09/0.31, 4:1.09/0.31, 5: 0.75/0.31, 6: 0.75/0.31, 7:0.75/0.31}
+    a = {1:1.09/lengthScale, 2:1.09/lengthScale, 3:1.09/lengthScale, 4:1.09/lengthScale, 5: 0.75/lengthScale, 6: 0.75/lengthScale, 7:0.75/lengthScale}
 else:
     raise Exception('Option is not supported')
 print('bead radii {}'.format(a))
-lb = 2.4 #Srel Bjerrum
 
 #FTS params
 Nref = 1.
