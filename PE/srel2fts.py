@@ -65,6 +65,13 @@ pairs = {
 'LJGaussC2_HOH0': (5,10),
 
 'LJGaussCl-_Na+0': (6,7),
+'LJGaussC+_Na+0': (6,8),
+'LJGaussNa+_SO40': (6,9),
+'LJGaussC2_Na+0': (6,10),
+
+'LJGaussC+_Cl-0': (7,8),
+'LJGaussCl-_SO40': (7,9),
+'LJGaussC2_Cl-0': (7,10),
 
 'LJGaussC+_SO40': (8,9),
 'LJGaussC+_C20': (8,10),
