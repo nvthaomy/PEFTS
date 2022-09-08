@@ -7,19 +7,39 @@ from collections import OrderedDict
 sys.path.append('/home/mnguyen/bin/PEFTS/')
 from writePolyFTS import PolyFTS
 
-ff_file = "PE_ff.dat"
-output_file = 'template.in'
+ff_file = "/home/mnguyen/PE/PAA_PAH/CG/xp0.1_40AA24f1_40AH24f1_1300nacl_51880hoh/1.100fCG_100fAA/1.417nsMD_fixedHOH_aPE1.09nm_Cut17.6/FTS/PE_ff.dat"
+xPAA = float(sys.argv[1])
+fPAA = float(sys.argv[2])
+NPAA = int(sys.argv[3])
+NPAH = int(sys.argv[4])
+csalt = float(sys.argv[5]) # in M
+kT = 1.
+
+output_file = 'input.in'
 CG_sigma = 0.31 #nm
 lb = 2.4 # sigma
 bead_types = ['A-', 'B+', 'Na+', 'Cl-', 'HOH']
 charges = [-1, 1, 1, -1, 0]
 b_ref = np.sqrt(6)
-kT = 1 #args.temperature * R / 1000
-chains = [['A-'] * 24, ['B+'] * 24, ['Na+'], ['Cl-'], ['HOH']]
+chains = [['A-']*NPAA, ['B+']*NPAH, ['Na+'], ['Cl-'], ['HOH']]
 chain_stat = 'DGC'
-vol_frac = [0.1,0.1,0.1,0.1,0.7] # bead basis
-Ctot = 25.
 ensemble = 'canonical'
+
+#====
+precision = 8
+vAA = 0.45**3 # nm^3
+vAH = 0.45**3 # nm^3
+v0 = 0.03 #water, na, cl
+xPAH = (1-fPAA)/fPAA * xPAA
+xOther = 1 - xPAA - xPAH
+Ctot = 1/(vAA * xPAA + vAH * xPAH + v0 * xOther)
+phi_solids = Ctot * (vAA * xPAA + vAH * xPAH)
+print('phi_solids ',phi_solids)
+xsalt = round(csalt*0.6022/Ctot,precision)
+xNa = round(xPAA + xsalt,precision)
+xCl = round(xPAH + xsalt,precision)
+xW = round(xOther - xNa - xCl,precision)
+vol_frac = [xPAA,xPAH,xNa,xCl,xW] # bead basis
 
 # import sim ff file
 ff = ForceField.from_sim_ff_file(ff_file, kT=kT)
@@ -100,23 +120,51 @@ composition_dict = {"Ensemble": ensemble, "ChainVolFrac": [],
 # chains_dict
 chains_dict = OrderedDict([["NChains", str(len(chains))], ["polymerReferenceN", "1"]])
 for i, chain in enumerate(chains):
-    chains_dict['chain{}'.format(i+1)] = {"Label": 'chain{}'.format(i+1), "NBlocks": str(len(chain)),
-                                          "NBeads": str(len(chain)), "Nperblock": "1 " * len(chain)}
+    # condense block definitions
+    block_species = []
+    n_per_block = []
+    for j,bead in enumerate(chain):
+        if j == 0: 
+            current_bead = bead
+            cnt = 1
+        else:
+            if bead == current_bead:
+                cnt += 1
+            else:
+                block_species.append(str(bead_types.index(current_bead) + 1))
+                n_per_block.append(str(cnt))
+                current_bead = bead
+                cnt = 1
+    block_species.append(str(bead_types.index(current_bead) + 1))
+    n_per_block.append(str(cnt))
+    chains_dict['chain{}'.format(i+1)] = {"Label": 'chain{}'.format(i+1), "NBlocks": str(len(n_per_block)),
+                                          "NBeads": str(len(chain)), "Nperblock": n_per_block}
     if len(chain) > 1:
-        chains_dict['chain{}'.format(i+1)].update({"BlockSpecies": " ".join([str(bead_types.index(bn) + 1) for bn in chain]),
+        chains_dict['chain{}'.format(i+1)].update({"BlockSpecies": block_species,
                                                    "Architecture": "linear", "Statistics": chain_stat})
     else:
-        chains_dict['chain{}'.format(i+1)].update({ "Species": " ".join([str(bead_types.index(bn) + 1) for bn in chain]),
+        chains_dict['chain{}'.format(i+1)].update({ "Species": bead_types.index(chain[0]) + 1,
                                                    "Architecture": "point"})
     composition_dict["ChainVolFrac"].append(str(vol_frac[i]))
 composition_dict["ChainVolFrac"]= " ".join(composition_dict["ChainVolFrac"])
 
 fts = PolyFTS(monomers_dict=monomers_dict, interactions_dict=interactions_dict, 
               chains_dict=chains_dict, composition_dict=composition_dict)
-fts.NPW = [128,128,128]
-fts.num_time_steps_per_block = 100
-fts.num_blocks = 2000
-fts.dt = 0.001
+fts.dim = 2
+fts.NPW = [128,128]
+fts.cell_scaling = 20
+fts.cell_lengths = [1,1]
+fts.cell_angles = [90]
+fts.num_time_steps_per_block = 500
+fts.num_blocks = 10000
+fts.dt = 0.005
+fts.job_type = 'SCFT'
+fts.field_updater = 'SIS'
+fts.lambda_force_scale = [2.5,0.25,1.75,2.5,4,5.0] # scale roughly ~ sqrt(eigenvalues), last field is electrostatic
+fts.variable_cell = 'false'
+fts.read_input_fields = 'no'
+fts.input_fields_file = 'None'
+fts.calc_density_operator = 'False'
 s = fts.write_PolyFTS()
 
 with open(output_file,'w') as f:
