@@ -31,6 +31,7 @@ class PolyFTS(object):
         self.scft_stress_stopping_tol = 1e-7
         self.variable_cell = 'False'
         self.calc_density_operator = 'False'
+        self.OpenMP_nthreads = 24
 
     def get_models(self):
         cell_dict = OrderedDict([['Dim', str(self.dim)], ['CellScaling', str(self.cell_scaling)],
@@ -105,9 +106,9 @@ InputFileVersion = 3
         s += '\n'
         s +=  self.dict_to_str(simulation_dict, 'simulation')
         s += '\n'
-        s += """parallel {
+        s += """parallel {{
   CUDA_selectdevice = 0
   CUDA_threadblocksize = 64
-  OpenMP_nthreads = 4
-}\n"""
+  OpenMP_nthreads = {}
+}}\n""".format(self.OpenMP_nthreads)
         return(s)
