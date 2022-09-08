@@ -31,7 +31,8 @@ class PolyFTS(object):
         self.scft_stress_stopping_tol = 1e-7
         self.variable_cell = 'False'
         self.calc_density_operator = 'False'
-
+        self.initfields = None
+        self.DensityOutputByChain = 'False'
     def get_models(self):
         cell_dict = OrderedDict([['Dim', str(self.dim)], ['CellScaling', str(self.cell_scaling)],
                                  ['CellLengths', ' '.join(str(x) for x in self.cell_lengths)], 
@@ -44,9 +45,12 @@ class PolyFTS(object):
                                     ])
         initfields_dict = OrderedDict([["ReadInputFields", self.read_input_fields], 
                                         ["InputFieldsFile", self.input_fields_file]])
-        for i in range(int(self.monomers_dict["NSpecies"].split()[0])):
-            initfields_dict["initfield{}".format(i+1)] = {'inittype': 'urng'}
-
+        if self.initfields == None:
+            for i in range(int(self.monomers_dict["NSpecies"].split()[0])):
+                initfields_dict["initfield{}".format(i+1)] = {'inittype': 'urng'}
+        else:
+            for field_name, dict in self.initfields.items():
+                initfields_dict[field_name] = dict
         model1_dict = OrderedDict([['cell', cell_dict], ['interactions', self.interactions_dict],
                                     ['composition', self.composition_dict], ['operators', operators_dict],
                                     ['initfields', initfields_dict]
@@ -61,7 +65,7 @@ class PolyFTS(object):
     
     def get_simulation(self):
         IO_dict = {"KeepDensityHistory": 'False', "KeepFieldHistory": "False",
-                   "DensityOutputByChain": "False", "OutputFormattedFields": "False",
+                   "DensityOutputByChain": self.DensityOutputByChain, "OutputFormattedFields": "False",
                    "OutputFields": "HFields", "FieldOutputSpace": "both"}
         simulation_dict = OrderedDict([["JobType", self.job_type], ["FieldUpdater", self.field_updater],
                                         ["NumTimeStepsPerBlock", self.num_time_steps_per_block],
